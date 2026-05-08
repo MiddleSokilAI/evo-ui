@@ -1,0 +1,18 @@
+<x-evo::table.module
+    :controller="$controller"
+    :config="$config"
+    :rows="$rows"
+    :filters="$filters"
+    :filter-options="$filterOptions"
+    :filter-labels="$filterLabels"
+    :page="$page"
+    :total="$total"
+    :last-page="$lastPage"
+    :pagination-items="$paginationItems"
+    :per-page="$perPage"
+    :per-page-options="$perPageOptions"
+    :view-mode="$viewMode"
+    :sort="$sort"
+    :direction="$direction"
+    :selected-id="$selectedId"
+/>

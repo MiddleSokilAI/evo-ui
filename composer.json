@@ -1,0 +1,47 @@
+{
+    "name": "evolution-cms/evo-ui",
+    "license": "MIT",
+    "type": "library",
+    "description": "A Livewire and DaisyUI powered UI foundation for modern Evolution CMS manager modules.",
+    "keywords": [
+        "evolution-cms",
+        "evocms",
+        "livewire",
+        "daisyui",
+        "manager-ui"
+    ],
+    "authors": [
+        {
+            "name": "Evolution CMS",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "evolution-cms/evolution": "^3.5.6",
+        "livewire/livewire": "^4.0"
+    },
+    "autoload": {
+        "files": [
+            "src/Livewire/Foundation/bootstrap.php"
+        ],
+        "psr-4": {
+            "EvoUI\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "EvoUI\\EvoUIServiceProvider"
+            ],
+            "aliases": {
+                "EvoUI": "EvoUI\\Facades\\EvoUI"
+            }
+        }
+    },
+    "scripts": {
+        "test": "php tests/run.php"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
