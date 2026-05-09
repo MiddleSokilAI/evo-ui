@@ -513,3 +513,174 @@ public function saveModal(array $data, ?int $id = null, string $mode = 'create')
 
 `saveModal()` must return the saved row id so the table can keep the row
 selected after saving.
+
+## Action Contract
+
+Toolbar and row actions are declarative. A table action should describe the UI
+command and point to a provider or Livewire method that owns the behavior.
+
+Common toolbar action keys:
+
+```php
+'actions' => [
+    [
+        'key' => 'create',
+        'type' => 'wire',
+        'method' => 'openCreateModal',
+        'icon' => 'plus',
+        'label' => 'global.add',
+        'tone' => 'success',
+        'icon_only' => true,
+    ],
+],
+```
+
+Common row action keys:
+
+```php
+'row_actions' => [
+    [
+        'key' => 'publish',
+        'type' => 'wire',
+        'method' => 'togglePublished',
+        'icon' => 'eye',
+        'label' => 'global.publish',
+    ],
+    [
+        'key' => 'duplicate',
+        'type' => 'wire',
+        'method' => 'duplicate',
+        'icon' => 'copy',
+        'label' => 'global.duplicate',
+    ],
+    [
+        'key' => 'delete',
+        'type' => 'wire',
+        'method' => 'deleteRow',
+        'icon' => 'trash',
+        'tone' => 'danger',
+        'confirm' => true,
+    ],
+],
+```
+
+Action rules:
+
+- `type => wire` calls a Livewire method or a provider-backed table method.
+- `type => link` opens a URL resolved directly or through a provider.
+- `selection => single` requires a selected row.
+- `confirm => true` must use the shared delete/confirm UI, not a module-local
+  browser prompt.
+- destructive providers must enforce their own delete guards.
+
+Provider hooks commonly used by actions:
+
+```php
+public function createUrl(array $action): string;
+public function selectedEditUrl(array $action, ?int $selectedId): string;
+public function selectedDeleteHref(array $action, ?int $selectedId): string;
+public function selectedDeleteActionAttributes(array $action, ?int $selectedId): array;
+public function duplicate(int $id): void;
+public function togglePublished(int $id): void;
+public function deleteRow(int $id): void;
+```
+
+## Header Actions
+
+Column header actions are for compact operations tied to one column, such as
+auto-translate on an sLang language column. Define them on the column:
+
+```php
+[
+    'key' => 'uk',
+    'type' => 'text',
+    'label' => 'Українська',
+    'editable' => true,
+    'header_actions' => [
+        [
+            'key' => 'auto_translate',
+            'icon' => 'wand-sparkles',
+            'label' => 'Auto translate',
+            'provider' => 'autoTranslateInlineField',
+        ],
+    ],
+],
+```
+
+The table validates the action against the configured column and then delegates
+to the provider method. Header actions must be compact and column-scoped; larger
+operations belong in the toolbar.
+
+## Delete Guards
+
+The modal or provider may prevent deletion when a row is in use. The provider
+must be the source of truth because only the module knows its domain relations.
+
+Recommended provider shape:
+
+```php
+public function deleteGuard(int $id): array
+{
+    return [
+        'blocked' => true,
+        'message' => 'This status is used by existing issues.',
+        'count' => 12,
+    ];
+}
+```
+
+The generic UI should render the guard state, but the consumer provider decides
+whether deletion is allowed.
+
+## Extended Modal Field Types
+
+Real consumers use more than the minimal modal field set. Supported table modal
+fields include:
+
+- `text`
+- `email`
+- `number`
+- `date`
+- `datetime-local`
+- `select`
+- `textarea`
+- `checkbox`
+- `alias`
+- `radio`
+- `choices`
+- `image`
+- `file`
+- `editor`
+- `repeater`
+- `builder`
+- `color-picker`
+
+Field behavior is documented in the form/field catalogue. Table modal configs
+may use the same validation metadata, option providers and media/editor markers
+as forms, but table providers own modal defaults, row data and persistence.
+
+## Consumer Examples
+
+Use these consumers as references:
+
+- `sArticles` for article tables, relation choices, media/editor fields,
+  publish/duplicate/delete actions and content builder fields.
+- `dIssues` for settings taxonomy tables, color picker fields, delete guards
+  and issue table filters.
+- `sLang` for inline dictionary editing and language-column header actions.
+- `sSeo` for redirects table CRUD and compact settings-linked module tabs.
+
+## Contract Checklist
+
+Before adding a new table preset, confirm:
+
+- the preset key and config merge key match;
+- the provider returns deterministic `total()`, `rows()` and `filterGroups()`;
+- every sortable column has a provider-safe `sort_field`;
+- every filter has a stable `state`;
+- table/list views use the same row data;
+- modal fields have validation rules where user input is saved;
+- destructive actions are guarded by the provider;
+- reorder providers validate row ids and placement;
+- generic UI behavior stays in `evo-ui`;
+- module-specific persistence stays in the consumer module.

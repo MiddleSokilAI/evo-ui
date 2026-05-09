@@ -485,6 +485,7 @@ class Form extends Component
         return match ($field['type'] ?? 'text') {
             'checkbox' => (bool) $value,
             'config-map' => $this->castConfigMapValue($field, $value),
+            'csv' => $this->castCsvValue($value),
             'datetime' => $this->castDateTimeValue($value),
             'multi-checkbox' => $this->castMultiValue($field, $value),
             'number' => is_numeric($value) ? (int) $value : 0,
@@ -517,6 +518,16 @@ class Form extends Component
             ->all();
     }
 
+    protected function castCsvValue(mixed $value): array
+    {
+        return collect(is_array($value) ? $value : explode(',', (string) $value))
+            ->map(fn ($item) => trim((string) $item))
+            ->filter(fn ($item) => $item !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     protected function castDateTimeValue(mixed $value): int
     {
         if (!$value) {
@@ -544,6 +555,13 @@ class Form extends Component
                 ->filter()
                 ->values()
                 ->all();
+        }
+
+        if (($field['type'] ?? null) === 'csv' && is_array($value)) {
+            return collect($value)
+                ->map(fn ($item) => trim((string) $item))
+                ->filter(fn ($item) => $item !== '')
+                ->implode(', ');
         }
 
         if (($field['type'] ?? null) === 'config-map') {

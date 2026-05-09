@@ -3,8 +3,18 @@
 evo-ui est la base UI commune Livewire + DaisyUI pour les modules manager
 modernes d'Evolution CMS.
 
-Le package est deja utilise par `sArticles` et `dIssues`, et servira de base aux
-migrations de `sLang`, `sSeo` et d'autres extras.
+Le package est utilise par `sArticles`, `dIssues`, `sLang`, `sSeo` et `dDocs`
+comme couche UI canonique du manager. Les modules consommateurs decrivent
+declarativement tabs, tables, forms, workspaces, fields, providers et regles de
+sauvegarde; evo-ui possede le shell, les composants, le state behavior, le
+theme bridge et les assets locaux.
+
+## Quand l'utiliser
+
+Utilisez evo-ui pour un manager screen, un settings form, un table/list CRUD, un
+editeur de type resource, un issue workspace ou des primitives visuelles
+partagees. Les regles metier, la propriete des donnees, la semantique provider
+et les workflows specifiques restent dans le package consommateur.
 
 ## Fonctionnalites
 
@@ -18,6 +28,17 @@ migrations de `sLang`, `sSeo` et d'autres extras.
 - Composants partages: boutons, icones, tabs, modals, badges, cards, choices,
   champs image/fichier et rich editors.
 - Persistance de l'etat UI courant dans la session manager.
+
+## Workflows courants
+
+- Construire le shell du module avec `x-evo::layout`, `evo::partials.assets`,
+  module tabs et Livewire components.
+- Definir les surfaces table/list avec les presets `evo-ui.module-table`.
+- Definir les settings/model forms avec les presets `evo-ui.form`.
+- Reutiliser l'issue workspace contract pour les workflows provider-backed
+  list/kanban.
+- Documenter tout nouveau shared UI pattern comme contract, ajouter les package
+  tests, puis seulement ensuite l'utiliser dans les modules consommateurs.
 
 ## Exemple
 
@@ -36,10 +57,22 @@ migrations de `sLang`, `sSeo` et d'autres extras.
 
 - [Module Integration](../module-integration.md)
 - [Components](../components.md)
+- [Form And Field Catalogue](../forms.md)
 - [Module Table Contract](../module-table-contract.md)
+- [Issue Workspace Contract](../issue-workspace-contract.md)
+- [Testing Matrix](../testing.md)
 - [Consumers](../consumers.md)
 - [Release Checklist](../release-checklist.md)
+- [dDocs Tree/Viewer Notes](../ddocs-tree-viewer-notes.md)
 - [Roadmap](../roadmap.md)
+
+## Regles dDocs
+
+- Les liens de cette page restent volontairement dans le package `docs/` tree.
+- Les README localises sont des entrypoints; les contrats techniques canoniques
+  restent dans les root docs et sont lies ci-dessus.
+- Les exemples de code doivent utiliser des fenced language identifiers afin que
+  dDocs puisse appliquer une coloration stable.
 
 ## Regle
 

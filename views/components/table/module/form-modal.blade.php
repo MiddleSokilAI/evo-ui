@@ -12,6 +12,9 @@
     $modalHeaderMeta = method_exists($controller, 'modalHeaderMeta') ? $controller->modalHeaderMeta() : [];
     $cancelLabel = __((string) ($modal['cancel_label'] ?? 'evo::global.action_cancel'));
     $modalActions = $controller->modalActions();
+    $modalNotices = collect((array) ($modal['notices'] ?? []))
+        ->filter(fn ($notice) => is_array($notice) && (!empty($notice['title']) || !empty($notice['body'])))
+        ->values();
     $modalTabs = collect((array) ($modal['tabs'] ?? []))
         ->filter(fn ($tab) => is_array($tab) && !empty($tab['name']))
         ->values();
@@ -48,6 +51,33 @@
                         </button>
                     @endforeach
                 </nav>
+            @endif
+
+            @if($modalNotices->isNotEmpty())
+                <div class="evo-ui-modal__notices">
+                    @foreach($modalNotices as $notice)
+                        @php
+                            $tone = (string) ($notice['tone'] ?? 'info');
+                            $tone = in_array($tone, ['info', 'success', 'warning', 'danger'], true) ? $tone : 'info';
+                            $noticeIcon = (string) ($notice['icon'] ?? 'info-circle');
+                            $noticeTitle = !empty($notice['title']) ? __((string) $notice['title']) : '';
+                            $noticeBody = !empty($notice['body']) ? __((string) $notice['body']) : '';
+                        @endphp
+                        <div class="evo-ui-alert evo-ui-alert--{{ $tone }}">
+                            @if($noticeIcon !== '')
+                                <x-evo::icon :name="$noticeIcon" />
+                            @endif
+                            <span>
+                                @if($noticeTitle !== '')
+                                    <strong>{{ $noticeTitle }}</strong>
+                                @endif
+                                @if($noticeBody !== '')
+                                    <span>{!! $noticeBody !!}</span>
+                                @endif
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
             @endif
 
             @php

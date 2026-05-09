@@ -6,6 +6,7 @@
     $hint = !empty($field['hint']) ? __((string) $field['hint']) : '';
     $help = $field['help'] ?? $field['description'] ?? null;
     $helpText = $help ? __((string) $help) : '';
+    $placeholder = !empty($field['placeholder']) ? __((string) $field['placeholder']) : '';
     $fieldIdSuffix = (string) ($field['id_suffix'] ?? '');
     $fieldId = 'evo-modal-' . preg_replace('/[^a-z0-9_-]/i', '-', trim($controller->preset . '-' . $name . '-' . $fieldIdSuffix, '-'));
     $section = preg_replace('/[^a-z0-9_-]/i', '-', (string) ($field['section'] ?? ''));
@@ -824,7 +825,7 @@
                 <span class="evo-ui-color-field__swatch" style="--evo-ui-color-field-value: {{ $hexColor }};" aria-hidden="true"></span>
             </span>
         @elseif($type === 'textarea')
-            <textarea id="{{ $fieldId }}" class="evo-ui-textarea" rows="{{ (int) ($field['rows'] ?? 4) }}" wire:model.blur="{{ $model }}"></textarea>
+            <textarea id="{{ $fieldId }}" class="evo-ui-textarea" rows="{{ (int) ($field['rows'] ?? 4) }}" wire:model.blur="{{ $model }}" placeholder="{{ $placeholder }}"></textarea>
         @elseif($type === 'editor')
             @php
                 $editorOptions = $controller->modalEditorOptions($field);
@@ -857,15 +858,15 @@
                 </div>
             </div>
         @elseif($type === 'alias')
-            <input id="{{ $fieldId }}" type="text" class="evo-ui-input" wire:model.live.debounce.350ms="{{ $model }}" autocomplete="off">
+            <input id="{{ $fieldId }}" type="text" class="evo-ui-input" wire:model.live.debounce.350ms="{{ $model }}" autocomplete="off" placeholder="{{ $placeholder }}">
         @else
             @php
                 $inputType = in_array($type, ['email', 'number', 'date', 'datetime-local'], true) ? $type : 'text';
             @endphp
             @if(!empty($field['live']))
-                <input id="{{ $fieldId }}" type="{{ $inputType }}" class="evo-ui-input" wire:model.live.debounce.350ms="{{ $model }}" autocomplete="off" @if($inputType === 'number') min="{{ (int) ($field['min'] ?? 0) }}" @endif>
+                <input id="{{ $fieldId }}" type="{{ $inputType }}" class="evo-ui-input" wire:model.live.debounce.350ms="{{ $model }}" autocomplete="off" placeholder="{{ $placeholder }}" @if($inputType === 'number') min="{{ (int) ($field['min'] ?? 0) }}" @endif>
             @else
-                <input id="{{ $fieldId }}" type="{{ $inputType }}" class="evo-ui-input" wire:model.blur="{{ $model }}" autocomplete="off" @if($inputType === 'number') min="{{ (int) ($field['min'] ?? 0) }}" @endif>
+                <input id="{{ $fieldId }}" type="{{ $inputType }}" class="evo-ui-input" wire:model.blur="{{ $model }}" autocomplete="off" placeholder="{{ $placeholder }}" @if($inputType === 'number') min="{{ (int) ($field['min'] ?? 0) }}" @endif>
             @endif
         @endif
 

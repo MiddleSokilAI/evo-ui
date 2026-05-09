@@ -36,7 +36,7 @@
                 <button type="button" class="evo-ui-btn" wire:click="closeDeleteModal">
                     @lang('evo::global.action_cancel')
                 </button>
-                <button type="button" class="evo-ui-btn evo-ui-btn--danger evo-ui-btn--filled" wire:click="deleteConfirmed" wire:loading.attr="disabled" wire:target="deleteConfirmed">
+                <button type="button" class="evo-ui-btn evo-ui-btn--danger evo-ui-btn--filled" data-evo-delete-confirm-action wire:click="deleteConfirmed" wire:loading.attr="disabled" wire:target="deleteConfirmed">
                     <x-evo::icon name="trash" class="evo-ui-btn__icon" />
                     <span>@lang('evo::global.action_delete')</span>
                 </button>

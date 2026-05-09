@@ -716,6 +716,64 @@ class ModuleTable extends Component
         return (string) ($saved ?? $value);
     }
 
+    public function runInlineFieldAction(int $id, string $field, string $actionKey): void
+    {
+        $column = $this->inlineEditableColumn($field);
+
+        if (!$column || $id < 1 || trim($actionKey) === '') {
+            return;
+        }
+
+        $action = collect((array) ($column['inline_actions'] ?? []))
+            ->first(fn ($action) => is_array($action) && (string) ($action['key'] ?? '') === $actionKey);
+
+        if (!is_array($action)) {
+            return;
+        }
+
+        $provider = $this->provider();
+        $method = (string) ($action['provider'] ?? $column['inline_action_provider'] ?? '');
+
+        if ($method === '' || !method_exists($provider, $method)) {
+            return;
+        }
+
+        $this->callProvider($method, $id, $field, $action, $column);
+        $this->selectedId = $id;
+    }
+
+    public function runHeaderAction(string $field, string $actionKey): void
+    {
+        $field = trim($field);
+
+        if ($field === '' || trim($actionKey) === '') {
+            return;
+        }
+
+        $column = collect($this->columns())
+            ->first(fn ($column) => is_array($column) && (string) ($column['key'] ?? '') === $field);
+
+        if (!is_array($column)) {
+            return;
+        }
+
+        $action = collect((array) ($column['header_actions'] ?? []))
+            ->first(fn ($action) => is_array($action) && (string) ($action['key'] ?? '') === $actionKey);
+
+        if (!is_array($action)) {
+            return;
+        }
+
+        $provider = $this->provider();
+        $method = (string) ($action['provider'] ?? $column['header_action_provider'] ?? '');
+
+        if ($method === '' || !method_exists($provider, $method)) {
+            return;
+        }
+
+        $this->callProvider($method, $field, $action, $column);
+    }
+
     public function moveRow(int $id, string $direction): void
     {
         if (!$this->reorderEnabled() || $id < 1) {

@@ -123,6 +123,36 @@
         }));
     }
 
+    function formIsDirty() {
+        return document.querySelector('[data-evo-form-dirty="true"]') !== null;
+    }
+
+    function waitForCleanForm(callback, options) {
+        options = options || {};
+
+        var interval = Number(options.interval || 60);
+        var maxAttempts = Number(options.maxAttempts || 80);
+        var attempts = 0;
+
+        function check() {
+            if (!formIsDirty()) {
+                if (typeof callback === 'function') {
+                    callback();
+                }
+
+                return;
+            }
+
+            attempts += 1;
+
+            if (attempts < maxAttempts) {
+                window.setTimeout(check, interval);
+            }
+        }
+
+        check();
+    }
+
     function label(key, fallback) {
         var labels = window.EvoUI && window.EvoUI.config && window.EvoUI.config.labels
             ? window.EvoUI.config.labels
@@ -445,7 +475,7 @@
             empty.hidden = count > 0;
         }
 
-        if (countNode) {
+        if (countNode && !countNode.hasAttribute('data-evo-issue-total')) {
             countNode.textContent = String(count);
         }
     }
@@ -547,6 +577,67 @@
             });
             issueKanbanSyncBoard(board);
         });
+    }
+
+    function issueWorkspaceScrollParent(element) {
+        var parent = element ? element.parentElement : null;
+
+        while (parent && parent !== document.body && parent !== document.documentElement) {
+            var style = window.getComputedStyle(parent);
+
+            if (/(auto|scroll|hidden)/.test(style.overflowY) && parent.clientHeight > 0) {
+                return parent;
+            }
+
+            parent = parent.parentElement;
+        }
+
+        return null;
+    }
+
+    function updateIssueWorkspaceHeight(workspace) {
+        if (!workspace || !workspace.getBoundingClientRect) {
+            return;
+        }
+
+        var rect = workspace.getBoundingClientRect();
+        var viewportHeight = window.visualViewport && window.visualViewport.height
+            ? window.visualViewport.height
+            : window.innerHeight;
+        var scrollParent = issueWorkspaceScrollParent(workspace);
+        var parentBottom = scrollParent && scrollParent !== workspace
+            ? scrollParent.getBoundingClientRect().bottom
+            : viewportHeight;
+        var bottom = Math.min(viewportHeight, parentBottom);
+        var bottomGap = parseInt(workspace.getAttribute('data-evo-issue-bottom-gap') || '8', 10) || 8;
+        var height = Math.max(320, Math.floor(bottom - rect.top - bottomGap));
+
+        workspace.style.setProperty('--evo-ui-issue-workspace-height', height + 'px');
+    }
+
+    function initIssueWorkspace(workspace) {
+        var tabContent = workspace.closest ? workspace.closest('.tab-content') : null;
+
+        if (tabContent) {
+            tabContent.classList.add('evo-ui-tab-content--issue-workspace');
+        }
+
+        if (workspace.__evoIssueWorkspaceInitialized) {
+            updateIssueWorkspaceHeight(workspace);
+            return;
+        }
+
+        workspace.__evoIssueWorkspaceInitialized = true;
+        updateIssueWorkspaceHeight(workspace);
+        window.addEventListener('resize', function () {
+            updateIssueWorkspaceHeight(workspace);
+        }, {passive: true});
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', function () {
+                updateIssueWorkspaceHeight(workspace);
+            }, {passive: true});
+        }
     }
 
     function stopResourceParentSelection() {
@@ -765,10 +856,15 @@
             initIssueKanban(target);
         }
 
+        if (target.matches && target.matches('[data-evo-issue-workspace]')) {
+            initIssueWorkspace(target);
+        }
+
         target.querySelectorAll('[data-evo-layout]').forEach(initLayout);
         target.querySelectorAll('[data-evo-resource-parent]').forEach(initResourceParent);
         target.querySelectorAll('[data-evo-module-tabs]').forEach(initModuleTabs);
         target.querySelectorAll('[data-evo-issue-kanban]').forEach(initIssueKanban);
+        target.querySelectorAll('[data-evo-issue-workspace]').forEach(initIssueWorkspace);
     }
 
     function shouldHandleManagerLink(link, event) {
@@ -1443,6 +1539,10 @@
     window.EvoUI.init = init;
     window.EvoUI.dispatch = dispatch;
     window.EvoUI.on = on;
+    window.EvoUI.form = {
+        isDirty: formIsDirty,
+        waitForClean: waitForCleanForm
+    };
     window.EvoUI.selectFilter = selectFilter;
     window.EvoUI.multiFilter = multiFilter;
     window.EvoUI.dateRangeFilter = dateRangeFilter;

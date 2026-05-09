@@ -34,6 +34,10 @@ class ConfigFormService
         $values = $this->files->load((string) ($source['file'] ?? ''), config($root, []));
 
         foreach ($fields as $field) {
+            if (($field['save'] ?? true) === false) {
+                continue;
+            }
+
             data_set($values, $field['name'], $storageValue($field, data_get($data, $field['name'])));
         }
 

@@ -28,6 +28,7 @@ return [
     'action_child_resource' => 'Дочірній ресурс',
     'action_child_weblink' => 'Дочірнє веб-посилання',
     'more_actions' => 'Більше дій',
+    'load_more' => 'Завантажити ще',
     'filter_templates' => 'Шаблони',
     'filter_templates_search' => 'Пошук шаблону',
     'filter_publication_date' => 'Дата публікації',

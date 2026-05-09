@@ -28,6 +28,7 @@ return [
     'action_child_resource' => 'Child resource',
     'action_child_weblink' => 'Child web link',
     'more_actions' => 'More actions',
+    'load_more' => 'Load more',
     'filter_templates' => 'Templates',
     'filter_templates_search' => 'Search template',
     'filter_publication_date' => 'Publication date',

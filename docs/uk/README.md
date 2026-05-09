@@ -3,6 +3,10 @@
 evo-ui - це спільна Livewire + DaisyUI база для сучасних manager-модулів
 Evolution CMS.
 
+Цей `uk` entrypoint дублює український зміст для інструментів, які очікують ISO
+код мови `uk`. У самому Evolution CMS також підтримується `ua`, тому обидва
+entrypoints мають вести до однакового документаційного стандарту.
+
 Пакет використовується в `sArticles`, `dIssues`, `sLang`, `sSeo` і `dDocs` як
 канонічний UI-шар менеджера. Consumer-модулі декларативно описують tabs,
 tables, forms, workspaces, fields, providers і правила збереження, а evo-ui

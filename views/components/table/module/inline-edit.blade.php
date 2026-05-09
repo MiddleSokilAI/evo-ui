@@ -33,10 +33,17 @@
 
     $display = $toText($displayValue);
     $inputClass = trim('evo-ui-inline-edit__input ' . (string) ($column['input_class'] ?? ''));
+    $actions = collect((array) ($column['inline_actions'] ?? []))
+        ->filter(fn ($action) => is_array($action) && !empty($action['key']))
+        ->values();
 @endphp
 
 <span
-    class="{{ trim('evo-ui-inline-edit ' . $class) }}"
+    @class([
+        'evo-ui-inline-edit',
+        'evo-ui-inline-edit--with-actions' => $actions->isNotEmpty(),
+        $class,
+    ])
     x-data="{
         original: '',
         focus(event) {
@@ -62,4 +69,31 @@
         @keydown.escape.prevent="cancel($event); $event.target.blur()"
         wire:change="updateInlineField({{ $rowId }}, '{{ $field }}', $event.target.value)"
     >
+
+    @foreach($actions as $action)
+        @php
+            $actionKey = (string) $action['key'];
+            $actionLabel = __((string) ($action['label'] ?? $label));
+            $actionIcon = (string) ($action['icon'] ?? 'sparkles');
+            $actionTone = (string) ($action['tone'] ?? 'primary');
+        @endphp
+        <button
+            type="button"
+            @class([
+                'evo-ui-inline-edit__action',
+                'evo-ui-inline-edit__action--' . $actionTone => in_array($actionTone, ['primary', 'info', 'success', 'warning', 'danger'], true),
+            ])
+            title="{{ $actionLabel }}"
+            aria-label="{{ $actionLabel }}"
+            @disabled($disabled)
+            wire:click.stop="runInlineFieldAction({{ $rowId }}, @js($field), @js($actionKey))"
+            wire:target="runInlineFieldAction"
+            wire:loading.attr="disabled"
+            @click.stop
+            @dblclick.stop
+        >
+            <x-evo::icon :name="$actionIcon" />
+            <span class="evo-ui-sr-only">{{ $actionLabel }}</span>
+        </button>
+    @endforeach
 </span>

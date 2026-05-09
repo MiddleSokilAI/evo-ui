@@ -15,16 +15,22 @@ class IssueWorkspace extends Component
     public array $filters = [
         'category_id' => 0,
         'status_id' => 0,
+        'project_ids' => [],
         'category_ids' => [],
         'status_ids' => [],
+        'phase_ids' => [],
+        'priority_ids' => [],
         'assignee_ids' => [],
         'assignee' => 'all',
+        'archive' => 'active',
         'display' => 'kanban',
         'search' => '',
     ];
     public ?int $selectedIssueId = null;
     public string $replyBody = '';
     public ?int $replyToCommentId = null;
+    public bool $issueBodyEditing = false;
+    public string $issueBodyDraft = '';
 
     public function mount(string $preset, ?string $provider = null, array $context = []): void
     {
@@ -41,6 +47,7 @@ class IssueWorkspace extends Component
         if ($name === 'filters' || str_starts_with($name, 'filters.')) {
             $this->normalizeFilters();
             $this->selectedIssueId = null;
+            $this->resetIssueBodyEditor();
             $this->dispatchClientState();
         }
     }
@@ -49,6 +56,7 @@ class IssueWorkspace extends Component
     {
         $this->normalizeFilters();
         $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -57,6 +65,7 @@ class IssueWorkspace extends Component
         $allowed = collect($this->categories())->pluck('id')->map(fn ($id) => (int) $id)->all();
         $this->filters['category_id'] = in_array($categoryId, $allowed, true) ? $categoryId : 0;
         $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -65,14 +74,18 @@ class IssueWorkspace extends Component
         $allowed = collect($this->statuses())->pluck('id')->map(fn ($id) => (int) $id)->all();
         $this->filters['status_id'] = in_array($statusId, $allowed, true) ? $statusId : 0;
         $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
     public function applyMultiFilter(string $state, array $values): void
     {
         $options = match ($state) {
+            'project_ids' => $this->projects(),
             'category_ids' => $this->categories(),
             'status_ids' => $this->statuses(),
+            'phase_ids' => $this->phases(),
+            'priority_ids' => $this->priorities(),
             'assignee_ids' => $this->assignees(),
             default => [],
         };
@@ -95,6 +108,7 @@ class IssueWorkspace extends Component
             ->all();
 
         $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -103,6 +117,7 @@ class IssueWorkspace extends Component
         $allowed = collect($this->assignees())->pluck('value')->map(fn ($value) => (string) $value)->all();
         $this->filters['assignee'] = in_array($assignee, $allowed, true) ? $assignee : 'all';
         $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -117,21 +132,35 @@ class IssueWorkspace extends Component
         $this->dispatchClientState();
     }
 
+    public function setArchive(string $archive): void
+    {
+        $allowed = collect($this->archiveModes())->pluck('value')->map(fn ($value) => (string) $value)->all();
+        $this->filters['archive'] = in_array($archive, $allowed, true) ? $archive : 'active';
+        $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
+        $this->dispatchClientState();
+    }
+
     public function resetFilters(): void
     {
         $this->filters = array_merge([
             'category_id' => 0,
             'status_id' => 0,
+            'project_ids' => [],
             'category_ids' => [],
             'status_ids' => [],
+            'phase_ids' => [],
+            'priority_ids' => [],
             'assignee_ids' => [],
             'assignee' => 'all',
+            'archive' => 'active',
             'display' => (string) $this->workspaceConfig('default_display', 'kanban'),
             'search' => '',
         ], (array) $this->workspaceConfig('default_filters', []));
 
         $this->normalizeFilters();
         $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -140,6 +169,7 @@ class IssueWorkspace extends Component
         $this->selectedIssueId = $issueId > 0 ? $issueId : null;
         $this->replyBody = '';
         $this->replyToCommentId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -148,6 +178,7 @@ class IssueWorkspace extends Component
         $this->selectedIssueId = null;
         $this->replyBody = '';
         $this->replyToCommentId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -156,8 +187,37 @@ class IssueWorkspace extends Component
         $this->selectedIssueId = null;
         $this->replyBody = '';
         $this->replyToCommentId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
         $this->dispatch('evo-ui:issue.create', preset: $this->preset);
+    }
+
+    public function startIssueBodyEdit(): void
+    {
+        $issue = $this->selectedIssueId ? $this->issuePreview($this->selectedIssueId) : null;
+
+        if (!$issue) {
+            return;
+        }
+
+        $this->issueBodyDraft = (string) ($issue['body_full'] ?? $issue['body'] ?? '');
+        $this->issueBodyEditing = true;
+    }
+
+    public function cancelIssueBodyEdit(): void
+    {
+        $this->resetIssueBodyEditor();
+    }
+
+    public function saveIssueBody(): void
+    {
+        if (!$this->selectedIssueId || !$this->issueBodyEditing) {
+            return;
+        }
+
+        $this->callIssueProviderAction('updateIssueBody', $this->issueBodyDraft);
+        $this->resetIssueBodyEditor();
+        $this->dispatchClientState();
     }
 
     public function assignIssueToMe(): void
@@ -179,6 +239,30 @@ class IssueWorkspace extends Component
     public function unassignIssue(): void
     {
         $this->callIssueProviderAction('unassignIssue');
+        $this->dispatchClientState();
+    }
+
+    public function createChildIssue(): void
+    {
+        if (!$this->selectedIssueId) {
+            return;
+        }
+
+        $provider = $this->provider();
+
+        if (!$provider || !method_exists($provider, 'createChildIssue')) {
+            return;
+        }
+
+        $childId = (int) $provider->createChildIssue($this->selectedIssueId);
+
+        if ($childId > 0) {
+            $this->selectedIssueId = $childId;
+        }
+
+        $this->replyBody = '';
+        $this->replyToCommentId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -228,6 +312,32 @@ class IssueWorkspace extends Component
         $this->callIssueProviderAction('reopenIssue');
     }
 
+    public function moveSelectedIssuePrevious(): void
+    {
+        $this->callIssueProviderAction('moveIssuePrevious');
+        $this->dispatchClientState();
+    }
+
+    public function moveSelectedIssueNext(): void
+    {
+        $this->callIssueProviderAction('moveIssueNext');
+        $this->dispatchClientState();
+    }
+
+    public function archiveStatusIssues(int $statusId): void
+    {
+        $provider = $this->provider();
+
+        if (!$provider || !method_exists($provider, 'archiveStatusIssues')) {
+            return;
+        }
+
+        $provider->archiveStatusIssues(max(0, $statusId));
+        $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
+        $this->dispatchClientState();
+    }
+
     public function sortKanbanLanes(array $lanes): void
     {
         $provider = $this->provider();
@@ -255,6 +365,7 @@ class IssueWorkspace extends Component
 
         $provider->sortKanbanLanes($normalized);
         $this->selectedIssueId = null;
+        $this->resetIssueBodyEditor();
         $this->dispatchClientState();
     }
 
@@ -284,6 +395,7 @@ class IssueWorkspace extends Component
         if ($provider && method_exists($provider, 'replyEditorHtml')) {
             return (string) $provider->replyEditorHtml($fieldId, [
                 'height' => (string) $this->workspaceConfig('reply_editor.height', '220px'),
+                'editor' => (string) $this->workspaceConfig('reply_editor.editor', 'system'),
                 'content_type' => (string) $this->workspaceConfig('reply_editor.content_type', 'htmlmixed'),
             ]);
         }
@@ -296,16 +408,40 @@ class IssueWorkspace extends Component
         );
     }
 
+    public function issueBodyEditorHtml(string $fieldId): string
+    {
+        $provider = $this->provider();
+
+        if ($provider && method_exists($provider, 'issueBodyEditorHtml')) {
+            return (string) $provider->issueBodyEditorHtml($fieldId, [
+                'height' => (string) $this->workspaceConfig('body_editor.height', '360px'),
+                'editor' => (string) $this->workspaceConfig('body_editor.editor', $this->workspaceConfig('reply_editor.editor', 'system')),
+                'content_type' => (string) $this->workspaceConfig('body_editor.content_type', 'htmlmixed'),
+            ]);
+        }
+
+        return RichTextEditor::html(
+            ids: $fieldId,
+            height: (string) $this->workspaceConfig('body_editor.height', '360px'),
+            editor: (string) $this->workspaceConfig('body_editor.editor', $this->workspaceConfig('reply_editor.editor', 'system')),
+            contentType: (string) $this->workspaceConfig('body_editor.content_type', 'htmlmixed'),
+        );
+    }
+
     public function render(): View
     {
         $issueList = $this->filters['display'] === 'list' ? $this->issueList() : [];
 
         return view('evo::livewire.issue-workspace', [
             'config' => $this->workspaceConfig(),
+            'projects' => $this->projects(),
             'categories' => $this->categories(),
             'statuses' => $this->statuses(),
+            'phases' => $this->phases(),
+            'priorities' => $this->priorities(),
             'assignees' => $this->assignees(),
             'displays' => $this->displays(),
+            'archiveModes' => $this->archiveModes(),
             'metrics' => $this->metrics(),
             'filters' => $this->filters,
             'showStatusFilter' => $this->filters['display'] === 'list',
@@ -319,8 +455,11 @@ class IssueWorkspace extends Component
     {
         $this->filters['category_id'] = max(0, (int) ($this->filters['category_id'] ?? 0));
         $this->filters['status_id'] = max(0, (int) ($this->filters['status_id'] ?? 0));
+        $this->filters['project_ids'] = $this->normalizeIdList((array) ($this->filters['project_ids'] ?? []));
         $this->filters['category_ids'] = $this->normalizeIdList((array) ($this->filters['category_ids'] ?? []));
         $this->filters['status_ids'] = $this->normalizeIdList((array) ($this->filters['status_ids'] ?? []));
+        $this->filters['phase_ids'] = $this->normalizeIdList((array) ($this->filters['phase_ids'] ?? []));
+        $this->filters['priority_ids'] = $this->normalizeIdList((array) ($this->filters['priority_ids'] ?? []));
         $this->filters['assignee_ids'] = $this->normalizeAssigneeIdList((array) ($this->filters['assignee_ids'] ?? []));
         $this->filters['search'] = trim(strip_tags((string) ($this->filters['search'] ?? '')));
 
@@ -337,12 +476,22 @@ class IssueWorkspace extends Component
             ->values()
             ->all();
 
+        $allowedArchiveModes = collect($this->archiveModes())->pluck('value')->map(fn ($value) => (string) $value)->all();
+        $archive = (string) ($this->filters['archive'] ?? 'active');
+        $this->filters['archive'] = in_array($archive, $allowedArchiveModes, true) ? $archive : 'active';
+
         $allowedDisplays = collect($this->displays())->pluck('value')->map(fn ($value) => (string) $value)->all();
         $defaultDisplay = (string) $this->workspaceConfig('default_display', 'kanban');
         $display = (string) ($this->filters['display'] ?? $defaultDisplay);
         $this->filters['display'] = in_array($display, $allowedDisplays, true)
             ? $display
             : (in_array($defaultDisplay, $allowedDisplays, true) ? $defaultDisplay : ($allowedDisplays[0] ?? 'kanban'));
+
+        $allowedProjects = collect($this->projects())->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->filters['project_ids'] = collect($this->filters['project_ids'])
+            ->filter(fn (int $id) => in_array($id, $allowedProjects, true))
+            ->values()
+            ->all();
 
         $allowedCategories = collect($this->categories())->pluck('id')->map(fn ($id) => (int) $id)->all();
         $this->filters['category_id'] = in_array((int) $this->filters['category_id'], $allowedCategories, true)
@@ -359,6 +508,18 @@ class IssueWorkspace extends Component
             : 0;
         $this->filters['status_ids'] = collect($this->filters['status_ids'])
             ->filter(fn (int $id) => in_array($id, $allowedStatuses, true))
+            ->values()
+            ->all();
+
+        $allowedPhases = collect($this->phases())->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->filters['phase_ids'] = collect($this->filters['phase_ids'])
+            ->filter(fn (int $id) => in_array($id, $allowedPhases, true))
+            ->values()
+            ->all();
+
+        $allowedPriorities = collect($this->priorities())->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->filters['priority_ids'] = collect($this->filters['priority_ids'])
+            ->filter(fn (int $id) => in_array($id, $allowedPriorities, true))
             ->values()
             ->all();
     }
@@ -436,6 +597,7 @@ class IssueWorkspace extends Component
             $replyToCommentId = (int) $state['replyToCommentId'];
             $this->replyToCommentId = $replyToCommentId > 0 ? $replyToCommentId : null;
         }
+
     }
 
     protected function dispatchClientState(): void
@@ -472,11 +634,36 @@ class IssueWorkspace extends Component
         return $provider && method_exists($provider, 'categories') ? (array) $provider->categories() : [];
     }
 
+    protected function projects(): array
+    {
+        $provider = $this->provider();
+
+        return $provider && method_exists($provider, 'projects') ? (array) $provider->projects() : [];
+    }
+
     protected function statuses(): array
     {
         $provider = $this->provider();
 
         return $provider && method_exists($provider, 'statuses') ? (array) $provider->statuses() : [];
+    }
+
+    protected function phases(): array
+    {
+        $provider = $this->provider();
+
+        return $provider && method_exists($provider, 'phases') ? (array) $provider->phases() : [];
+    }
+
+    protected function priorities(): array
+    {
+        $provider = $this->provider();
+
+        if ($provider && method_exists($provider, 'priorities')) {
+            return (array) $provider->priorities();
+        }
+
+        return (array) $this->workspaceConfig('priorities', []);
     }
 
     protected function assignees(): array
@@ -495,6 +682,14 @@ class IssueWorkspace extends Component
         return (array) $this->workspaceConfig('displays', [
             ['value' => 'list', 'icon' => 'list', 'label' => 'evo::global.view_list'],
             ['value' => 'kanban', 'icon' => 'columns-3', 'label' => 'evo::global.view_kanban'],
+        ]);
+    }
+
+    protected function archiveModes(): array
+    {
+        return (array) $this->workspaceConfig('archive_modes', [
+            ['value' => 'active', 'icon' => 'inbox', 'label' => 'dIssues::global.archive_active'],
+            ['value' => 'archived', 'icon' => 'archive', 'label' => 'dIssues::global.archive_archived'],
         ]);
     }
 
@@ -560,5 +755,11 @@ class IssueWorkspace extends Component
         }
 
         $provider->{$method}($this->selectedIssueId, ...$arguments);
+    }
+
+    protected function resetIssueBodyEditor(): void
+    {
+        $this->issueBodyEditing = false;
+        $this->issueBodyDraft = '';
     }
 }

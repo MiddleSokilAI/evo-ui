@@ -7,20 +7,37 @@ tables, forms, modals, issue workspaces, and local assets.
 ## Languages
 
 - [English](en/README.md)
-- [Українська](ua/README.md)
-- [Русский](ru/README.md)
+- [Українська, Evolution locale `ua`](ua/README.md)
+- [Українська, ISO locale `uk`](uk/README.md)
 - [Deutsch](de/README.md)
 - [Français](fr/README.md)
 - [Polski](pl/README.md)
+- [Русский, legacy extra](ru/README.md)
 
 ## Canonical Developer Docs
 
 - [Module Integration](module-integration.md)
 - [Components](components.md)
+- [Form And Field Catalogue](forms.md)
 - [Module Table Contract](module-table-contract.md)
+- [Issue Workspace Contract](issue-workspace-contract.md)
+- [Testing Matrix](testing.md)
 - [Consumers](consumers.md)
 - [Release Checklist](release-checklist.md)
+- [dDocs Tree/Viewer Notes](ddocs-tree-viewer-notes.md)
 - [Roadmap](roadmap.md)
+
+## dDocs Navigation Contract
+
+- All package entrypoints must stay inside this `docs/` tree.
+- Localized READMEs are navigation and onboarding pages; canonical contracts live
+  in the root docs files listed above.
+- `ua` and `uk` both point to Ukrainian content because Evolution CMS commonly
+  uses `ua`, while external tooling often expects ISO `uk`.
+- Use fenced code language identifiers in examples so dDocs can highlight code
+  consistently.
+- Do not link to local filesystem paths, manager URLs, or external docs from
+  localized entrypoints unless a future task defines that boundary explicitly.
 
 ## Quality Rules
 

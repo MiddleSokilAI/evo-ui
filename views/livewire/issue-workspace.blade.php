@@ -1,5 +1,14 @@
 @php
     $wireTarget = $config['wire_target'] ?? 'filters,setCategory,setStatus,setAssignee,switchDisplay,resetFilters';
+    $projectOptions = collect($projects)
+        ->filter(fn ($project) => (int) ($project['id'] ?? 0) > 0)
+        ->map(fn ($project) => [
+            'id' => (int) $project['id'],
+            'name' => __($project['label'] ?? ''),
+            'icon' => (string) ($project['icon'] ?? 'folder'),
+        ])
+        ->values()
+        ->all();
     $categoryOptions = collect($categories)
         ->filter(fn ($category) => (int) ($category['id'] ?? 0) > 0)
         ->map(fn ($category) => ['id' => (int) $category['id'], 'name' => __($category['label'] ?? '')])
@@ -8,6 +17,24 @@
     $statusOptions = collect($statuses)
         ->filter(fn ($status) => (int) ($status['id'] ?? 0) > 0)
         ->map(fn ($status) => ['id' => (int) $status['id'], 'name' => __($status['label'] ?? '')])
+        ->values()
+        ->all();
+    $phaseOptions = collect($phases)
+        ->filter(fn ($phase) => (int) ($phase['id'] ?? 0) > 0)
+        ->map(fn ($phase) => [
+            'id' => (int) $phase['id'],
+            'name' => __($phase['label'] ?? ''),
+            'icon' => (string) ($phase['icon'] ?? 'circle-dot'),
+        ])
+        ->values()
+        ->all();
+    $priorityOptions = collect($priorities)
+        ->filter(fn ($priority) => (int) ($priority['id'] ?? 0) > 0)
+        ->map(fn ($priority) => [
+            'id' => (int) $priority['id'],
+            'name' => __($priority['label'] ?? ''),
+            'icon' => (string) ($priority['icon'] ?? 'minus'),
+        ])
         ->values()
         ->all();
     $assigneeOptions = collect($assignees)
@@ -22,9 +49,17 @@
         ->values()
         ->all();
     $assignmentOptions = $assigneeOptions;
+    $projectCount = count((array) ($filters['project_ids'] ?? []));
     $categoryCount = count((array) ($filters['category_ids'] ?? []));
     $statusCount = count((array) ($filters['status_ids'] ?? []));
+    $phaseCount = count((array) ($filters['phase_ids'] ?? []));
+    $priorityCount = count((array) ($filters['priority_ids'] ?? []));
     $assigneeCount = count((array) ($filters['assignee_ids'] ?? []));
+    $projectFilterPayload = [
+        'state' => 'project_ids',
+        'selected' => array_map('intval', (array) ($filters['project_ids'] ?? [])),
+        'options' => $projectOptions,
+    ];
     $categoryFilterPayload = [
         'state' => 'category_ids',
         'selected' => array_map('intval', (array) ($filters['category_ids'] ?? [])),
@@ -34,6 +69,16 @@
         'state' => 'status_ids',
         'selected' => array_map('intval', (array) ($filters['status_ids'] ?? [])),
         'options' => $statusOptions,
+    ];
+    $phaseFilterPayload = [
+        'state' => 'phase_ids',
+        'selected' => array_map('intval', (array) ($filters['phase_ids'] ?? [])),
+        'options' => $phaseOptions,
+    ];
+    $priorityFilterPayload = [
+        'state' => 'priority_ids',
+        'selected' => array_map('intval', (array) ($filters['priority_ids'] ?? [])),
+        'options' => $priorityOptions,
     ];
     $assigneeFilterPayload = [
         'state' => 'assignee_ids',
@@ -58,6 +103,41 @@
         </div>
 
         <div class="evo-ui-table-filters">
+            <details
+                class="evo-ui-filter-dropdown"
+                x-data='EvoUI.multiFilter(@json($projectFilterPayload))'
+                @click.outside="reset(); $root.open = false"
+            >
+                <summary title="@lang('dIssues::global.all_projects')" aria-label="@lang('dIssues::global.all_projects')">
+                    <x-evo::icon name="folder" class="evo-ui-filter-icon" />
+                    @if($projectCount > 0)
+                        <span class="evo-ui-filter-badge" aria-hidden="true">{{ $projectCount }}</span>
+                    @endif
+                </summary>
+
+                <div class="evo-ui-filter-menu">
+                    <input type="search" class="evo-ui-input" x-model="search" placeholder="@lang('dIssues::global.filter_by_project')" autocomplete="off">
+
+                    <div class="evo-ui-filter-options">
+                        @foreach($projectOptions as $option)
+                            <label wire:key="issue-project-filter-{{ $option['id'] }}" x-show="visibleOptions().some((option) => option.id === {{ (int) $option['id'] }})">
+                                <input type="checkbox" value="{{ $option['id'] }}" :checked="selected.includes({{ (int) $option['id'] }})" @change="toggle({{ (int) $option['id'] }})">
+                                <x-evo::icon :name="$option['icon'] ?? 'folder'" />
+                                <span>{{ $option['name'] }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <div class="evo-ui-filter-menu__actions">
+                        <button type="button" class="evo-ui-filter-action" :title="allVisibleSelected() ? @js(__('evo::global.filter_clear')) : @js(__('evo::global.filter_all'))" :aria-label="allVisibleSelected() ? @js(__('evo::global.filter_clear')) : @js(__('evo::global.filter_all'))" @click="toggleAllVisible">
+                            <x-evo::icon name="checks" x-show="!allVisibleSelected()" />
+                            <x-evo::icon name="x" x-show="allVisibleSelected()" />
+                        </button>
+                        <x-evo::table.filter-apply />
+                    </div>
+                </div>
+            </details>
+
             <details
                 class="evo-ui-filter-dropdown"
                 x-data='EvoUI.multiFilter(@json($categoryFilterPayload))'
@@ -128,6 +208,75 @@
 
             <details
                 class="evo-ui-filter-dropdown"
+                x-data='EvoUI.multiFilter(@json($phaseFilterPayload))'
+                @click.outside="reset(); $root.open = false"
+            >
+                <summary title="@lang('dIssues::global.all_phases')" aria-label="@lang('dIssues::global.all_phases')">
+                    <x-evo::icon name="list-checks" class="evo-ui-filter-icon" />
+                    @if($phaseCount > 0)
+                        <span class="evo-ui-filter-badge" aria-hidden="true">{{ $phaseCount }}</span>
+                    @endif
+                </summary>
+
+                <div class="evo-ui-filter-menu">
+                    <input type="search" class="evo-ui-input" x-model="search" placeholder="@lang('dIssues::global.filter_by_phase')" autocomplete="off">
+
+                    <div class="evo-ui-filter-options">
+                        @foreach($phaseOptions as $option)
+                            <label wire:key="issue-phase-filter-{{ $option['id'] }}" x-show="visibleOptions().some((option) => option.id === {{ (int) $option['id'] }})">
+                                <input type="checkbox" value="{{ $option['id'] }}" :checked="selected.includes({{ (int) $option['id'] }})" @change="toggle({{ (int) $option['id'] }})">
+                                <span>{{ $option['name'] }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <div class="evo-ui-filter-menu__actions">
+                        <button type="button" class="evo-ui-filter-action" :title="allVisibleSelected() ? @js(__('evo::global.filter_clear')) : @js(__('evo::global.filter_all'))" :aria-label="allVisibleSelected() ? @js(__('evo::global.filter_clear')) : @js(__('evo::global.filter_all'))" @click="toggleAllVisible">
+                            <x-evo::icon name="checks" x-show="!allVisibleSelected()" />
+                            <x-evo::icon name="x" x-show="allVisibleSelected()" />
+                        </button>
+                        <x-evo::table.filter-apply />
+                    </div>
+                </div>
+            </details>
+
+            <details
+                class="evo-ui-filter-dropdown"
+                x-data='EvoUI.multiFilter(@json($priorityFilterPayload))'
+                @click.outside="reset(); $root.open = false"
+            >
+                <summary title="@lang('dIssues::global.all_priorities')" aria-label="@lang('dIssues::global.all_priorities')">
+                    <x-evo::icon name="flag" class="evo-ui-filter-icon" />
+                    @if($priorityCount > 0)
+                        <span class="evo-ui-filter-badge" aria-hidden="true">{{ $priorityCount }}</span>
+                    @endif
+                </summary>
+
+                <div class="evo-ui-filter-menu">
+                    <input type="search" class="evo-ui-input" x-model="search" placeholder="@lang('dIssues::global.filter_by_priority')" autocomplete="off">
+
+                    <div class="evo-ui-filter-options">
+                        @foreach($priorityOptions as $option)
+                            <label wire:key="issue-priority-filter-{{ $option['id'] }}" x-show="visibleOptions().some((option) => option.id === {{ (int) $option['id'] }})">
+                                <input type="checkbox" value="{{ $option['id'] }}" :checked="selected.includes({{ (int) $option['id'] }})" @change="toggle({{ (int) $option['id'] }})">
+                                <x-evo::icon :name="$option['icon'] ?? 'minus'" />
+                                <span>{{ $option['name'] }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <div class="evo-ui-filter-menu__actions">
+                        <button type="button" class="evo-ui-filter-action" :title="allVisibleSelected() ? @js(__('evo::global.filter_clear')) : @js(__('evo::global.filter_all'))" :aria-label="allVisibleSelected() ? @js(__('evo::global.filter_clear')) : @js(__('evo::global.filter_all'))" @click="toggleAllVisible">
+                            <x-evo::icon name="checks" x-show="!allVisibleSelected()" />
+                            <x-evo::icon name="x" x-show="allVisibleSelected()" />
+                        </button>
+                        <x-evo::table.filter-apply />
+                    </div>
+                </div>
+            </details>
+
+            <details
+                class="evo-ui-filter-dropdown"
                 x-data='EvoUI.multiFilter(@json($assigneeFilterPayload))'
                 @click.outside="reset(); $root.open = false"
             >
@@ -162,6 +311,26 @@
         </div>
 
         <div class="evo-ui-table-controls">
+            <div class="evo-ui-view-toggle" role="group" aria-label="{{ __('dIssues::global.archive_filter') }}">
+                @foreach($archiveModes as $archiveMode)
+                    @php
+                        $archiveValue = (string) ($archiveMode['value'] ?? 'active');
+                    @endphp
+                    <button
+                        type="button"
+                        class="{{ ($filters['archive'] ?? 'active') === $archiveValue ? 'is-active' : '' }}"
+                        title="{{ __($archiveMode['label'] ?? $archiveValue) }}"
+                        aria-label="{{ __($archiveMode['label'] ?? $archiveValue) }}"
+                        wire:click="setArchive('{{ $archiveValue }}')"
+                    >
+                        @if(!empty($archiveMode['icon']))
+                            <x-evo::icon :name="$archiveMode['icon']" />
+                        @endif
+                        <span class="evo-ui-sr-only">{{ __($archiveMode['label'] ?? $archiveValue) }}</span>
+                    </button>
+                @endforeach
+            </div>
+
             <div class="evo-ui-view-toggle" role="group" aria-label="{{ __('evo::global.issue_display') }}">
                 @foreach($displays as $display)
                     @php
@@ -196,6 +365,9 @@
                     @php
                         $laneColor = (string) ($lane['color'] ?? '');
                         $laneStyle = str_starts_with($laneColor, '#') ? '--evo-issue-accent: ' . $laneColor : '';
+                        $laneOwner = (array) ($lane['owner'] ?? []);
+                        $laneTotal = (int) ($lane['total'] ?? $lane['count'] ?? 0);
+                        $laneLoaded = (int) ($lane['loaded'] ?? count((array) ($lane['issues'] ?? [])));
                     @endphp
                     <section class="evo-ui-issue-kanban__lane" role="listitem" data-evo-issue-status="{{ (int) ($lane['id'] ?? 0) }}" @if($laneStyle) style="{{ $laneStyle }}" @endif>
                         <header class="evo-ui-issue-kanban__lane-header">
@@ -203,32 +375,66 @@
                                 <x-evo::icon :name="$lane['icon'] ?? 'circle-dot'" />
                                 <span>{{ __($lane['label'] ?? '') }}</span>
                             </div>
-                            <span class="evo-ui-issue-kanban__count" data-evo-issue-count>{{ (int) ($lane['count'] ?? 0) }}</span>
+                            <div class="evo-ui-issue-kanban__lane-actions">
+                                @if(!empty($laneOwner['initials']))
+                                    <span class="evo-ui-issue-kanban__lane-owner" title="{{ $laneOwner['label'] ?? '' }}">
+                                        @if(!empty($laneOwner['avatar_url']))
+                                            <img src="{{ $laneOwner['avatar_url'] }}" alt="{{ $laneOwner['label'] ?? '' }}" loading="lazy">
+                                        @else
+                                            {{ $laneOwner['initials'] }}
+                                        @endif
+                                    </span>
+                                @endif
+                                @if(!empty($lane['can_bulk_archive']))
+                                    <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.archive_closed_lane')" aria-label="@lang('dIssues::global.archive_closed_lane')" wire:click="archiveStatusIssues({{ (int) ($lane['id'] ?? 0) }})">
+                                        <x-evo::icon name="archive" />
+                                    </button>
+                                @endif
+                                <span class="evo-ui-issue-kanban__count" data-evo-issue-count data-evo-issue-total="{{ $laneTotal }}">{{ $laneTotal }}</span>
+                            </div>
                         </header>
 
-                        <div class="evo-ui-issue-kanban__cards" data-evo-issue-lane data-status-id="{{ (int) ($lane['id'] ?? 0) }}">
+                        <div
+                            class="evo-ui-issue-kanban__cards"
+                            data-evo-issue-lane
+                            data-status-id="{{ (int) ($lane['id'] ?? 0) }}"
+                            data-evo-issue-total="{{ $laneTotal }}"
+                            data-evo-issue-loaded="{{ $laneLoaded }}"
+                        >
                             @forelse(($lane['issues'] ?? []) as $issue)
                                 @php
                                     $category = (array) ($issue['category'] ?? []);
+                                    $phase = (array) ($issue['phase'] ?? []);
                                     $project = (array) ($issue['project'] ?? []);
                                     $assignee = (array) ($issue['assignee'] ?? []);
+                                    $subtasks = (array) ($issue['subtasks'] ?? []);
+                                    $priority = (array) ($issue['priority'] ?? []);
                                     $categoryColor = (string) ($category['color'] ?? '');
                                     $categoryStyle = str_starts_with($categoryColor, '#') ? '--evo-issue-chip: ' . $categoryColor : '';
+                                    $phaseColor = (string) ($phase['color'] ?? '');
+                                    $phaseStyle = str_starts_with($phaseColor, '#') ? '--evo-issue-chip: ' . $phaseColor : '';
+                                    $priorityColor = (string) ($priority['color'] ?? '');
+                                    $priorityStyle = str_starts_with($priorityColor, '#') ? '--evo-issue-chip: ' . $priorityColor : '';
+                                    $issueId = (int) ($issue['id'] ?? 0);
+                                    $issueTitle = trim((string) ($issue['title'] ?? ''));
+                                    $issueBody = trim((string) ($issue['body'] ?? ''));
                                 @endphp
                                 <button
                                     type="button"
                                     class="evo-ui-issue-card"
                                     draggable="true"
                                     data-evo-issue-card
-                                    data-issue-id="{{ (int) ($issue['id'] ?? 0) }}"
-                                    wire:click="selectIssue({{ (int) ($issue['id'] ?? 0) }})"
-                                    aria-label="{{ $issue['title'] ?? '' }}"
+                                    data-issue-id="{{ $issueId }}"
+                                    wire:click="selectIssue({{ $issueId }})"
+                                    aria-label="{{ $issueTitle !== '' ? $issueTitle : '#' . $issueId }}"
                                 >
-                                    <span class="evo-ui-issue-card__title">{{ $issue['title'] ?? '' }}</span>
+                                    <span class="evo-ui-issue-card__content">
+                                        <span class="evo-ui-issue-card__title">{{ $issueTitle !== '' ? $issueTitle : '#' . $issueId }}</span>
 
-                                    @if(!empty($issue['body']))
-                                        <span class="evo-ui-issue-card__body">{{ $issue['body'] }}</span>
-                                    @endif
+                                        @if($issueBody !== '')
+                                            <span class="evo-ui-issue-card__body">{{ $issueBody }}</span>
+                                        @endif
+                                    </span>
 
                                     <span class="evo-ui-issue-card__meta">
                                         @if(!empty($project['label']))
@@ -243,12 +449,33 @@
                                             </span>
                                         @endif
 
-                                        <span class="evo-ui-issue-card__stat" title="Comments">
+                                        @if(!empty($priority['label']))
+                                            <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--priority" @if($priorityStyle) style="{{ $priorityStyle }}" @endif>
+                                                <x-evo::icon :name="$priority['icon'] ?? 'flag'" />
+                                                <span>{{ $priority['label'] }}</span>
+                                            </span>
+                                        @endif
+
+                                        @if(!empty($phase['label']))
+                                            <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--phase" @if($phaseStyle) style="{{ $phaseStyle }}" @endif>
+                                                <x-evo::icon :name="$phase['icon'] ?? 'circle-dot'" />
+                                                <span>{{ $phase['label'] }}</span>
+                                            </span>
+                                        @endif
+
+                                        <span class="evo-ui-issue-card__stat" title="@lang('dIssues::global.comments')">
                                             <x-evo::icon name="message-circle" />
                                             <span>{{ (int) ($issue['comments_count'] ?? 0) }}</span>
                                         </span>
 
-                                        <span class="evo-ui-issue-card__stat" title="Issue ID">
+                                        @if(!empty($subtasks['has_children']))
+                                            <span class="evo-ui-issue-card__stat" title="@lang('dIssues::global.subtasks')">
+                                                <x-evo::icon name="list-checks" />
+                                                <span>{{ (int) ($subtasks['closed'] ?? 0) }}/{{ (int) ($subtasks['total'] ?? 0) }}</span>
+                                            </span>
+                                        @endif
+
+                                        <span class="evo-ui-issue-card__stat" title="@lang('dIssues::global.issue_id')">
                                             <x-evo::icon name="hash" />
                                             <span>{{ (int) ($issue['id'] ?? 0) }}</span>
                                         </span>
@@ -270,6 +497,7 @@
                                     <span>@lang('evo::global.table_empty')</span>
                                 </div>
                             @endforelse
+
                         </div>
                     </section>
                 @empty
@@ -282,17 +510,24 @@
 
         @if($filters['display'] === 'list')
             <div class="evo-ui-issue-split" data-evo-issue-split>
-                <aside class="evo-ui-issue-split__list" aria-label="{{ __('evo::global.view_list') }}">
+                <aside class="evo-ui-issue-split__list" aria-label="{{ __('evo::global.view_list') }}" data-evo-issue-list>
                     @forelse($issueList as $issue)
                         @php
                             $listStatus = (array) ($issue['status'] ?? []);
+                            $listPhase = (array) ($issue['phase'] ?? []);
                             $listCategory = (array) ($issue['category'] ?? []);
                             $listProject = (array) ($issue['project'] ?? []);
                             $listAssignee = (array) ($issue['assignee'] ?? []);
+                            $listSubtasks = (array) ($issue['subtasks'] ?? []);
+                            $listPriority = (array) ($issue['priority'] ?? []);
                             $listCategoryColor = (string) ($listCategory['color'] ?? '');
                             $listCategoryStyle = str_starts_with($listCategoryColor, '#') ? '--evo-issue-chip: ' . $listCategoryColor : '';
                             $listStatusColor = (string) ($listStatus['color'] ?? '');
                             $listStatusStyle = str_starts_with($listStatusColor, '#') ? '--evo-issue-chip: ' . $listStatusColor : '';
+                            $listPhaseColor = (string) ($listPhase['color'] ?? '');
+                            $listPhaseStyle = str_starts_with($listPhaseColor, '#') ? '--evo-issue-chip: ' . $listPhaseColor : '';
+                            $listPriorityColor = (string) ($listPriority['color'] ?? '');
+                            $listPriorityStyle = str_starts_with($listPriorityColor, '#') ? '--evo-issue-chip: ' . $listPriorityColor : '';
                             $isSelected = (int) ($selectedIssue['id'] ?? 0) === (int) ($issue['id'] ?? 0);
                         @endphp
 
@@ -318,6 +553,13 @@
                                     <span class="evo-ui-issue-card__chip" @if($listCategoryStyle) style="{{ $listCategoryStyle }}" @endif>{{ $listCategory['label'] }}</span>
                                 @endif
 
+                                @if(!empty($listPriority['label']))
+                                    <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--priority" @if($listPriorityStyle) style="{{ $listPriorityStyle }}" @endif>
+                                        <x-evo::icon :name="$listPriority['icon'] ?? 'flag'" />
+                                        <span>{{ $listPriority['label'] }}</span>
+                                    </span>
+                                @endif
+
                                 @if(!empty($listStatus['label']))
                                     <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--status" @if($listStatusStyle) style="{{ $listStatusStyle }}" @endif>
                                         <x-evo::icon :name="$listStatus['icon'] ?? 'circle-dot'" />
@@ -325,10 +567,24 @@
                                     </span>
                                 @endif
 
+                                @if(!empty($listPhase['label']))
+                                    <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--phase" @if($listPhaseStyle) style="{{ $listPhaseStyle }}" @endif>
+                                        <x-evo::icon :name="$listPhase['icon'] ?? 'circle-dot'" />
+                                        <span>{{ $listPhase['label'] }}</span>
+                                    </span>
+                                @endif
+
                                 <span class="evo-ui-issue-card__stat">
                                     <x-evo::icon name="message-circle" />
                                     <span>{{ (int) ($issue['comments_count'] ?? 0) }}</span>
                                 </span>
+
+                                @if(!empty($listSubtasks['has_children']))
+                                    <span class="evo-ui-issue-card__stat" title="@lang('dIssues::global.subtasks')">
+                                        <x-evo::icon name="list-checks" />
+                                        <span>{{ (int) ($listSubtasks['closed'] ?? 0) }}/{{ (int) ($listSubtasks['total'] ?? 0) }}</span>
+                                    </span>
+                                @endif
 
                                 <span class="evo-ui-issue-card__stat">
                                     <x-evo::icon name="hash" />
@@ -352,20 +608,32 @@
                             <span>@lang('evo::global.table_empty')</span>
                         </div>
                     @endforelse
+
                 </aside>
 
                 <section class="evo-ui-issue-split__detail" aria-live="polite">
                     @if($selectedIssue)
                         @php
                             $detailStatus = (array) ($selectedIssue['status'] ?? []);
+                            $detailPhase = (array) ($selectedIssue['phase'] ?? []);
                             $detailCategory = (array) ($selectedIssue['category'] ?? []);
                             $detailProject = (array) ($selectedIssue['project'] ?? []);
                             $detailAssignee = (array) ($selectedIssue['assignee'] ?? []);
                             $detailAuthor = (array) ($selectedIssue['author'] ?? []);
+                            $detailPriority = (array) ($selectedIssue['priority'] ?? []);
                             $detailActions = (array) ($selectedIssue['actions'] ?? []);
                             $detailComments = (array) ($selectedIssue['comments'] ?? []);
+                            $detailTransitions = (array) ($selectedIssue['transitions'] ?? []);
+                            $detailChildren = (array) ($selectedIssue['children'] ?? []);
+                            $detailParent = (array) ($selectedIssue['parent'] ?? []);
+                            $detailSubtasks = (array) ($selectedIssue['subtasks'] ?? []);
+                            $detailExternal = (array) ($selectedIssue['external'] ?? []);
                             $detailStatusColor = (string) ($detailStatus['color'] ?? '');
                             $detailStatusStyle = str_starts_with($detailStatusColor, '#') ? '--evo-issue-chip: ' . $detailStatusColor : '';
+                            $detailPhaseColor = (string) ($detailPhase['color'] ?? '');
+                            $detailPhaseStyle = str_starts_with($detailPhaseColor, '#') ? '--evo-issue-chip: ' . $detailPhaseColor : '';
+                            $detailPriorityColor = (string) ($detailPriority['color'] ?? '');
+                            $detailPriorityStyle = str_starts_with($detailPriorityColor, '#') ? '--evo-issue-chip: ' . $detailPriorityColor : '';
                             $detailAuthorDuplicatesAssignee = (int) ($detailAuthor['id'] ?? 0) > 0
                                 && (int) ($detailAuthor['id'] ?? 0) === (int) ($detailAssignee['id'] ?? 0);
                         @endphp
@@ -377,10 +645,10 @@
                             </div>
 
                             <div class="evo-ui-issue-detail__actions">
-                                @if(!empty($detailActions['can_assign']))
-                                    <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.assign_myself')" aria-label="@lang('dIssues::global.assign_myself')" wire:click="assignIssueToMe">
-                                        <x-evo::icon name="user-plus" />
-                                    </button>
+	                                @if(!empty($detailActions['can_assign']))
+	                                    <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.assign_myself')" aria-label="@lang('dIssues::global.assign_myself')" wire:click="assignIssueToMe">
+	                                        <x-evo::icon name="user-plus" />
+	                                    </button>
                                     <details class="evo-ui-filter-dropdown evo-ui-assignment-dropdown">
                                         <summary title="@lang('dIssues::global.assignee')" aria-label="@lang('dIssues::global.assignee')">
                                             <x-evo::icon name="users" class="evo-ui-filter-icon" />
@@ -413,10 +681,34 @@
                                                 @endforeach
                                             </div>
                                         </div>
-                                    </details>
-                                @endif
+	                                    </details>
+	                                @endif
 
-                                @if(!empty($detailActions['can_reopen']))
+	                                @if(!empty($detailActions['can_edit']) && !$issueBodyEditing)
+	                                    <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('evo::global.action_edit')" aria-label="@lang('evo::global.action_edit')" wire:click="startIssueBodyEdit">
+	                                        <x-evo::icon name="edit" />
+	                                    </button>
+	                                @endif
+
+                                    @if(!empty($detailActions['can_create_child']))
+                                        <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.create_child_issue')" aria-label="@lang('dIssues::global.create_child_issue')" wire:click="createChildIssue">
+                                            <x-evo::icon name="list-plus" />
+                                        </button>
+                                    @endif
+
+                                    @if(!empty($detailActions['can_move_previous']))
+                                        <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.move_previous_status')" aria-label="@lang('dIssues::global.move_previous_status')" wire:click="moveSelectedIssuePrevious">
+                                            <x-evo::icon name="arrow-left" />
+                                        </button>
+                                    @endif
+
+                                    @if(!empty($detailActions['can_move_next']))
+                                        <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.move_next_status')" aria-label="@lang('dIssues::global.move_next_status')" wire:click="moveSelectedIssueNext">
+                                            <x-evo::icon name="arrow-right" />
+                                        </button>
+                                    @endif
+
+	                                @if(!empty($detailActions['can_reopen']))
                                     <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.reopen_issue')" aria-label="@lang('dIssues::global.reopen_issue')" wire:click="reopenSelectedIssue">
                                         <x-evo::icon name="refresh-ccw" />
                                     </button>
@@ -434,6 +726,18 @@
                                 <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--status" @if($detailStatusStyle) style="{{ $detailStatusStyle }}" @endif>
                                     <x-evo::icon :name="$detailStatus['icon'] ?? 'circle-dot'" />
                                     <span>{{ $detailStatus['label'] }}</span>
+                                </span>
+                            @endif
+                            @if(!empty($detailPhase['label']))
+                                <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--phase" @if($detailPhaseStyle) style="{{ $detailPhaseStyle }}" @endif>
+                                    <x-evo::icon :name="$detailPhase['icon'] ?? 'circle-dot'" />
+                                    <span>{{ $detailPhase['label'] }}</span>
+                                </span>
+                            @endif
+                            @if(!empty($detailPriority['label']))
+                                <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--priority" @if($detailPriorityStyle) style="{{ $detailPriorityStyle }}" @endif>
+                                    <x-evo::icon :name="$detailPriority['icon'] ?? 'flag'" />
+                                    <span>{{ $detailPriority['label'] }}</span>
                                 </span>
                             @endif
                             @if(!empty($detailProject['label']))
@@ -468,12 +772,132 @@
                             @if(!empty($selectedIssue['updated_at']))
                                 <span><x-evo::icon name="calendar-clock" /> <span>@lang('dIssues::global.updated_at'):</span> {{ $selectedIssue['updated_at'] }}</span>
                             @endif
+                            @if(!empty($detailExternal['url']))
+                                <a href="{{ $detailExternal['url'] }}" target="_blank" rel="noopener noreferrer">
+                                    <x-evo::icon name="external-link" />
+                                    <span>@lang('dIssues::global.external_issue')</span>
+                                </a>
+                            @endif
                             <span><x-evo::icon name="message-circle" /> {{ (int) ($selectedIssue['comments_count'] ?? 0) }}</span>
+                            @if(!empty($detailSubtasks['has_children']))
+                                <span><x-evo::icon name="list-checks" /> @lang('dIssues::global.subtasks'): {{ (int) ($detailSubtasks['closed'] ?? 0) }}/{{ (int) ($detailSubtasks['total'] ?? 0) }}</span>
+                            @endif
                         </div>
 
-                        <article class="evo-ui-issue-preview__content">
-                            {!! $this->issueBodyHtml((string) ($selectedIssue['body_full'] ?? $selectedIssue['body'] ?? '')) !!}
-                        </article>
+                        @if(!empty($detailParent['id']))
+                            <div class="evo-ui-issue-parent">
+                                <x-evo::icon name="git-merge" />
+                                <span>@lang('dIssues::global.parent_issue') #{{ (int) ($detailParent['id'] ?? 0) }}: {{ $detailParent['title'] ?? '' }}</span>
+                            </div>
+                        @endif
+
+	                        @if($issueBodyEditing)
+	                            @php
+	                                $detailBodyEditorId = 'evo-issue-body-' . (int) ($selectedIssue['id'] ?? 0);
+	                            @endphp
+	                            <form class="evo-ui-issue-body-editor" x-on:submit.prevent="EvoUI.syncRichEditors($el, $wire).then(() => $wire.saveIssueBody())">
+	                                <div
+	                                    class="evo-ui-editor-field"
+	                                    wire:ignore
+	                                    wire:key="issue-body-editor-{{ (int) ($selectedIssue['id'] ?? 0) }}"
+	                                    x-init="$nextTick(() => EvoUI.initRichEditorField($el))"
+	                                >
+	                                    <textarea
+	                                        id="{{ $detailBodyEditorId }}"
+	                                        class="evo-ui-textarea evo-ui-textarea--editor"
+	                                        rows="10"
+	                                        data-evo-rich-editor
+	                                        data-evo-rich-editor-model="issueBodyDraft"
+	                                        placeholder="@lang('dIssues::global.issue_body')"
+	                                    >{{ $issueBodyDraft }}</textarea>
+	                                    {!! $this->issueBodyEditorHtml($detailBodyEditorId) !!}
+	                                </div>
+	                                <footer class="evo-ui-issue-reply__actions">
+	                                    <button type="button" class="evo-ui-btn" wire:click="cancelIssueBodyEdit">
+	                                        <x-evo::icon name="x" />
+	                                        <span>@lang('evo::global.action_cancel')</span>
+	                                    </button>
+	                                    <button type="submit" class="evo-ui-btn evo-ui-btn--primary evo-ui-btn--filled">
+	                                        <x-evo::icon name="check" />
+	                                        <span>@lang('evo::global.action_save')</span>
+	                                    </button>
+	                                </footer>
+	                            </form>
+	                        @else
+	                            <article class="evo-ui-issue-preview__content">
+	                                {!! $this->issueBodyHtml((string) ($selectedIssue['body_full'] ?? $selectedIssue['body'] ?? '')) !!}
+	                            </article>
+	                        @endif
+
+                        <section class="evo-ui-issue-subtasks" aria-label="@lang('dIssues::global.subtasks')">
+                            <header class="evo-ui-issue-conversation__header">
+                                <span>@lang('dIssues::global.subtasks')</span>
+                                <span>{{ (int) ($detailSubtasks['closed'] ?? 0) }}/{{ (int) ($detailSubtasks['total'] ?? count($detailChildren)) }}</span>
+                            </header>
+
+                            <div class="evo-ui-issue-subtasks__items">
+                                @forelse($detailChildren as $child)
+                                    @php
+                                        $childStatus = (array) ($child['status'] ?? []);
+                                        $childPhase = (array) ($child['phase'] ?? []);
+                                        $childStatusColor = (string) ($childStatus['color'] ?? '');
+                                        $childStatusStyle = str_starts_with($childStatusColor, '#') ? '--evo-issue-chip: ' . $childStatusColor : '';
+                                        $childPhaseColor = (string) ($childPhase['color'] ?? '');
+                                        $childPhaseStyle = str_starts_with($childPhaseColor, '#') ? '--evo-issue-chip: ' . $childPhaseColor : '';
+                                    @endphp
+                                    <button type="button" class="evo-ui-issue-subtask" wire:key="issue-child-{{ (int) ($child['id'] ?? 0) }}" wire:click="selectIssue({{ (int) ($child['id'] ?? 0) }})">
+                                        <span class="evo-ui-issue-subtask__title">#{{ (int) ($child['id'] ?? 0) }} {{ $child['title'] ?? '' }}</span>
+                                        <span class="evo-ui-issue-subtask__meta">
+                                            @if(!empty($childStatus['label']))
+                                                <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--status" @if($childStatusStyle) style="{{ $childStatusStyle }}" @endif>
+                                                    <x-evo::icon :name="$childStatus['icon'] ?? 'circle-dot'" />
+                                                    <span>{{ $childStatus['label'] }}</span>
+                                                </span>
+                                            @endif
+                                            @if(!empty($childPhase['label']))
+                                                <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--phase" @if($childPhaseStyle) style="{{ $childPhaseStyle }}" @endif>
+                                                    <x-evo::icon :name="$childPhase['icon'] ?? 'circle-dot'" />
+                                                    <span>{{ $childPhase['label'] }}</span>
+                                                </span>
+                                            @endif
+                                        </span>
+                                    </button>
+                                @empty
+                                    <div class="evo-ui-issue-conversation__empty">@lang('dIssues::global.no_subtasks')</div>
+                                @endforelse
+                            </div>
+                        </section>
+
+                        <section class="evo-ui-issue-timeline" aria-label="@lang('dIssues::global.status_history')">
+                            <header class="evo-ui-issue-conversation__header">
+                                <span>@lang('dIssues::global.status_history')</span>
+                                <span>{{ count($detailTransitions) }}</span>
+                            </header>
+
+                            <div class="evo-ui-issue-timeline__items">
+                                @forelse($detailTransitions as $transition)
+                                    @php
+                                        $fromStatus = (array) ($transition['from_status'] ?? []);
+                                        $toStatus = (array) ($transition['to_status'] ?? []);
+                                        $fromPhase = (array) ($transition['from_phase'] ?? []);
+                                        $toPhase = (array) ($transition['to_phase'] ?? []);
+                                        $transitionUser = (array) ($transition['user'] ?? []);
+                                    @endphp
+                                    <article class="evo-ui-issue-timeline__item" wire:key="issue-transition-{{ (int) ($transition['id'] ?? 0) }}">
+                                        <x-evo::icon name="git-commit-horizontal" />
+                                        <div>
+                                            <strong>{{ $fromStatus['label'] ?? '-' }} -> {{ $toStatus['label'] ?? '-' }}</strong>
+                                            @if(!empty($fromPhase['label']) || !empty($toPhase['label']))
+                                                <span>{{ $fromPhase['label'] ?? '-' }} -> {{ $toPhase['label'] ?? '-' }}</span>
+                                            @endif
+                                        </div>
+                                        <small>{{ $transitionUser['label'] ?? __('dIssues::global.manager') }} · {{ $transition['created_at'] ?? '' }}</small>
+                                    </article>
+                                @empty
+                                    <div class="evo-ui-issue-conversation__empty">@lang('dIssues::global.no_status_history')</div>
+                                @endforelse
+                            </div>
+                        </section>
 
                         <section class="evo-ui-issue-conversation" aria-label="@lang('dIssues::global.comments')">
                             <header class="evo-ui-issue-conversation__header">
@@ -496,7 +920,7 @@
                                         </div>
                                         <div class="evo-ui-issue-comment__body">
                                             <header class="evo-ui-issue-comment__meta">
-                                                <strong>{{ $commentAuthor['label'] ?? 'Manager' }}</strong>
+                                                <strong>{{ $commentAuthor['label'] ?? __('dIssues::global.manager') }}</strong>
                                                 <span>{{ $comment['created_at'] ?? '' }}</span>
                                                 @if(!empty($detailActions['can_reply']))
                                                     <button type="button" class="evo-ui-issue-comment__reply" title="@lang('dIssues::global.reply_to_comment')" aria-label="@lang('dIssues::global.reply_to_comment')" wire:click="replyToComment({{ (int) ($comment['id'] ?? 0) }})">
@@ -511,7 +935,7 @@
                                                 @endphp
                                                 <div class="evo-ui-issue-comment__parent">
                                                     <x-evo::icon name="corner-up-left" />
-                                                    <span>{{ $commentParentAuthor['label'] ?? 'Manager' }}:</span>
+                                                    <span>{{ $commentParentAuthor['label'] ?? __('dIssues::global.manager') }}:</span>
                                                     <span>{{ $commentParent['excerpt'] ?? '' }}</span>
                                                 </div>
                                             @endif
@@ -535,7 +959,7 @@
                                     @if($detailReplyContext)
                                         <div class="evo-ui-issue-reply__context">
                                             <x-evo::icon name="corner-up-left" />
-                                            <span>@lang('dIssues::global.replying_to') {{ $detailReplyContextAuthor['label'] ?? 'Manager' }}</span>
+                                            <span>@lang('dIssues::global.replying_to') {{ $detailReplyContextAuthor['label'] ?? __('dIssues::global.manager') }}</span>
                                             <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.cancel_reply')" aria-label="@lang('dIssues::global.cancel_reply')" wire:click="cancelReplyToComment">
                                                 <x-evo::icon name="x" />
                                             </button>
@@ -588,10 +1012,18 @@
             $previewProject = (array) ($selectedIssue['project'] ?? []);
             $previewAssignee = (array) ($selectedIssue['assignee'] ?? []);
             $previewAuthor = (array) ($selectedIssue['author'] ?? []);
+            $previewPriority = (array) ($selectedIssue['priority'] ?? []);
             $previewActions = (array) ($selectedIssue['actions'] ?? []);
             $previewComments = (array) ($selectedIssue['comments'] ?? []);
+            $previewTransitions = (array) ($selectedIssue['transitions'] ?? []);
+            $previewChildren = (array) ($selectedIssue['children'] ?? []);
+            $previewParent = (array) ($selectedIssue['parent'] ?? []);
+            $previewSubtasks = (array) ($selectedIssue['subtasks'] ?? []);
+            $previewExternal = (array) ($selectedIssue['external'] ?? []);
             $previewStatusColor = (string) ($previewStatus['color'] ?? '');
             $previewStatusStyle = str_starts_with($previewStatusColor, '#') ? '--evo-issue-chip: ' . $previewStatusColor : '';
+            $previewPriorityColor = (string) ($previewPriority['color'] ?? '');
+            $previewPriorityStyle = str_starts_with($previewPriorityColor, '#') ? '--evo-issue-chip: ' . $previewPriorityColor : '';
             $previewAuthorDuplicatesAssignee = (int) ($previewAuthor['id'] ?? 0) > 0
                 && (int) ($previewAuthor['id'] ?? 0) === (int) ($previewAssignee['id'] ?? 0);
         @endphp
@@ -614,7 +1046,7 @@
                     </div>
 
                     <div class="evo-ui-issue-detail__actions">
-                        @if(!empty($previewActions['can_assign']))
+	                        @if(!empty($previewActions['can_assign']))
                             <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.assign_myself')" aria-label="@lang('dIssues::global.assign_myself')" wire:click="assignIssueToMe">
                                 <x-evo::icon name="user-plus" />
                             </button>
@@ -650,10 +1082,34 @@
                                         @endforeach
                                     </div>
                                 </div>
-                            </details>
-                        @endif
+	                            </details>
+	                        @endif
 
-                        @if(!empty($previewActions['can_reopen']))
+	                        @if(!empty($previewActions['can_edit']) && !$issueBodyEditing)
+	                            <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('evo::global.action_edit')" aria-label="@lang('evo::global.action_edit')" wire:click="startIssueBodyEdit">
+	                                <x-evo::icon name="edit" />
+	                            </button>
+	                        @endif
+
+                            @if(!empty($previewActions['can_create_child']))
+                                <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.create_child_issue')" aria-label="@lang('dIssues::global.create_child_issue')" wire:click="createChildIssue">
+                                    <x-evo::icon name="list-plus" />
+                                </button>
+                            @endif
+
+                            @if(!empty($previewActions['can_move_previous']))
+                                <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.move_previous_status')" aria-label="@lang('dIssues::global.move_previous_status')" wire:click="moveSelectedIssuePrevious">
+                                    <x-evo::icon name="arrow-left" />
+                                </button>
+                            @endif
+
+                            @if(!empty($previewActions['can_move_next']))
+                                <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.move_next_status')" aria-label="@lang('dIssues::global.move_next_status')" wire:click="moveSelectedIssueNext">
+                                    <x-evo::icon name="arrow-right" />
+                                </button>
+                            @endif
+
+	                        @if(!empty($previewActions['can_reopen']))
                             <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.reopen_issue')" aria-label="@lang('dIssues::global.reopen_issue')" wire:click="reopenSelectedIssue">
                                 <x-evo::icon name="refresh-ccw" />
                             </button>
@@ -676,6 +1132,12 @@
                             <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--status" @if($previewStatusStyle) style="{{ $previewStatusStyle }}" @endif>
                                 <x-evo::icon :name="$previewStatus['icon'] ?? 'circle-dot'" />
                                 <span>{{ $previewStatus['label'] }}</span>
+                            </span>
+                        @endif
+                        @if(!empty($previewPriority['label']))
+                            <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--priority" @if($previewPriorityStyle) style="{{ $previewPriorityStyle }}" @endif>
+                                <x-evo::icon :name="$previewPriority['icon'] ?? 'flag'" />
+                                <span>{{ $previewPriority['label'] }}</span>
                             </span>
                         @endif
                         @if(!empty($previewProject['label']))
@@ -710,12 +1172,132 @@
                         @if(!empty($selectedIssue['updated_at']))
                             <span><x-evo::icon name="calendar-clock" /> <span>@lang('dIssues::global.updated_at'):</span> {{ $selectedIssue['updated_at'] }}</span>
                         @endif
+                        @if(!empty($previewExternal['url']))
+                            <a href="{{ $previewExternal['url'] }}" target="_blank" rel="noopener noreferrer">
+                                <x-evo::icon name="external-link" />
+                                <span>@lang('dIssues::global.external_issue')</span>
+                            </a>
+                        @endif
                         <span><x-evo::icon name="message-circle" /> {{ (int) ($selectedIssue['comments_count'] ?? 0) }}</span>
+                        @if(!empty($previewSubtasks['has_children']))
+                            <span><x-evo::icon name="list-checks" /> @lang('dIssues::global.subtasks'): {{ (int) ($previewSubtasks['closed'] ?? 0) }}/{{ (int) ($previewSubtasks['total'] ?? 0) }}</span>
+                        @endif
                     </div>
 
-                    <article class="evo-ui-issue-preview__content">
-                        {!! $this->issueBodyHtml((string) ($selectedIssue['body_full'] ?? $selectedIssue['body'] ?? '')) !!}
-                    </article>
+                    @if(!empty($previewParent['id']))
+                        <div class="evo-ui-issue-parent">
+                            <x-evo::icon name="git-merge" />
+                            <span>@lang('dIssues::global.parent_issue') #{{ (int) ($previewParent['id'] ?? 0) }}: {{ $previewParent['title'] ?? '' }}</span>
+                        </div>
+                    @endif
+
+	                    @if($issueBodyEditing)
+	                        @php
+	                            $previewBodyEditorId = 'evo-issue-preview-body-' . (int) ($selectedIssue['id'] ?? 0);
+	                        @endphp
+	                        <form class="evo-ui-issue-body-editor" x-on:submit.prevent="EvoUI.syncRichEditors($el, $wire).then(() => $wire.saveIssueBody())">
+	                            <div
+	                                class="evo-ui-editor-field"
+	                                wire:ignore
+	                                wire:key="issue-preview-body-editor-{{ (int) ($selectedIssue['id'] ?? 0) }}"
+	                                x-init="$nextTick(() => EvoUI.initRichEditorField($el))"
+	                            >
+	                                <textarea
+	                                    id="{{ $previewBodyEditorId }}"
+	                                    class="evo-ui-textarea evo-ui-textarea--editor"
+	                                    rows="10"
+	                                    data-evo-rich-editor
+	                                    data-evo-rich-editor-model="issueBodyDraft"
+	                                    placeholder="@lang('dIssues::global.issue_body')"
+	                                >{{ $issueBodyDraft }}</textarea>
+	                                {!! $this->issueBodyEditorHtml($previewBodyEditorId) !!}
+	                            </div>
+	                            <footer class="evo-ui-issue-reply__actions">
+	                                <button type="button" class="evo-ui-btn" wire:click="cancelIssueBodyEdit">
+	                                    <x-evo::icon name="x" />
+	                                    <span>@lang('evo::global.action_cancel')</span>
+	                                </button>
+	                                <button type="submit" class="evo-ui-btn evo-ui-btn--primary evo-ui-btn--filled">
+	                                    <x-evo::icon name="check" />
+	                                    <span>@lang('evo::global.action_save')</span>
+	                                </button>
+	                            </footer>
+	                        </form>
+	                    @else
+	                        <article class="evo-ui-issue-preview__content">
+	                            {!! $this->issueBodyHtml((string) ($selectedIssue['body_full'] ?? $selectedIssue['body'] ?? '')) !!}
+	                        </article>
+	                    @endif
+
+                    <section class="evo-ui-issue-subtasks" aria-label="@lang('dIssues::global.subtasks')">
+                        <header class="evo-ui-issue-conversation__header">
+                            <span>@lang('dIssues::global.subtasks')</span>
+                            <span>{{ (int) ($previewSubtasks['closed'] ?? 0) }}/{{ (int) ($previewSubtasks['total'] ?? count($previewChildren)) }}</span>
+                        </header>
+
+                        <div class="evo-ui-issue-subtasks__items">
+                            @forelse($previewChildren as $child)
+                                @php
+                                    $childStatus = (array) ($child['status'] ?? []);
+                                    $childPhase = (array) ($child['phase'] ?? []);
+                                    $childStatusColor = (string) ($childStatus['color'] ?? '');
+                                    $childStatusStyle = str_starts_with($childStatusColor, '#') ? '--evo-issue-chip: ' . $childStatusColor : '';
+                                    $childPhaseColor = (string) ($childPhase['color'] ?? '');
+                                    $childPhaseStyle = str_starts_with($childPhaseColor, '#') ? '--evo-issue-chip: ' . $childPhaseColor : '';
+                                @endphp
+                                <button type="button" class="evo-ui-issue-subtask" wire:key="issue-preview-child-{{ (int) ($child['id'] ?? 0) }}" wire:click="selectIssue({{ (int) ($child['id'] ?? 0) }})">
+                                    <span class="evo-ui-issue-subtask__title">#{{ (int) ($child['id'] ?? 0) }} {{ $child['title'] ?? '' }}</span>
+                                    <span class="evo-ui-issue-subtask__meta">
+                                        @if(!empty($childStatus['label']))
+                                            <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--status" @if($childStatusStyle) style="{{ $childStatusStyle }}" @endif>
+                                                <x-evo::icon :name="$childStatus['icon'] ?? 'circle-dot'" />
+                                                <span>{{ $childStatus['label'] }}</span>
+                                            </span>
+                                        @endif
+                                        @if(!empty($childPhase['label']))
+                                            <span class="evo-ui-issue-card__chip evo-ui-issue-card__chip--phase" @if($childPhaseStyle) style="{{ $childPhaseStyle }}" @endif>
+                                                <x-evo::icon :name="$childPhase['icon'] ?? 'circle-dot'" />
+                                                <span>{{ $childPhase['label'] }}</span>
+                                            </span>
+                                        @endif
+                                    </span>
+                                </button>
+                            @empty
+                                <div class="evo-ui-issue-conversation__empty">@lang('dIssues::global.no_subtasks')</div>
+                            @endforelse
+                        </div>
+                    </section>
+
+                    <section class="evo-ui-issue-timeline" aria-label="@lang('dIssues::global.status_history')">
+                        <header class="evo-ui-issue-conversation__header">
+                            <span>@lang('dIssues::global.status_history')</span>
+                            <span>{{ count($previewTransitions) }}</span>
+                        </header>
+
+                        <div class="evo-ui-issue-timeline__items">
+                            @forelse($previewTransitions as $transition)
+                                @php
+                                    $fromStatus = (array) ($transition['from_status'] ?? []);
+                                    $toStatus = (array) ($transition['to_status'] ?? []);
+                                    $fromPhase = (array) ($transition['from_phase'] ?? []);
+                                    $toPhase = (array) ($transition['to_phase'] ?? []);
+                                    $transitionUser = (array) ($transition['user'] ?? []);
+                                @endphp
+                                <article class="evo-ui-issue-timeline__item" wire:key="issue-preview-transition-{{ (int) ($transition['id'] ?? 0) }}">
+                                    <x-evo::icon name="git-commit-horizontal" />
+                                    <div>
+                                        <strong>{{ $fromStatus['label'] ?? '-' }} -> {{ $toStatus['label'] ?? '-' }}</strong>
+                                        @if(!empty($fromPhase['label']) || !empty($toPhase['label']))
+                                            <span>{{ $fromPhase['label'] ?? '-' }} -> {{ $toPhase['label'] ?? '-' }}</span>
+                                        @endif
+                                    </div>
+                                    <small>{{ $transitionUser['label'] ?? __('dIssues::global.manager') }} · {{ $transition['created_at'] ?? '' }}</small>
+                                </article>
+                            @empty
+                                <div class="evo-ui-issue-conversation__empty">@lang('dIssues::global.no_status_history')</div>
+                            @endforelse
+                        </div>
+                    </section>
 
                     <section class="evo-ui-issue-conversation" aria-label="@lang('dIssues::global.comments')">
                         <header class="evo-ui-issue-conversation__header">
@@ -738,7 +1320,7 @@
                                     </div>
                                     <div class="evo-ui-issue-comment__body">
                                         <header class="evo-ui-issue-comment__meta">
-                                            <strong>{{ $commentAuthor['label'] ?? 'Manager' }}</strong>
+                                            <strong>{{ $commentAuthor['label'] ?? __('dIssues::global.manager') }}</strong>
                                             <span>{{ $comment['created_at'] ?? '' }}</span>
                                             @if(!empty($previewActions['can_reply']))
                                                 <button type="button" class="evo-ui-issue-comment__reply" title="@lang('dIssues::global.reply_to_comment')" aria-label="@lang('dIssues::global.reply_to_comment')" wire:click="replyToComment({{ (int) ($comment['id'] ?? 0) }})">
@@ -753,7 +1335,7 @@
                                             @endphp
                                             <div class="evo-ui-issue-comment__parent">
                                                 <x-evo::icon name="corner-up-left" />
-                                                <span>{{ $commentParentAuthor['label'] ?? 'Manager' }}:</span>
+                                                <span>{{ $commentParentAuthor['label'] ?? __('dIssues::global.manager') }}:</span>
                                                 <span>{{ $commentParent['excerpt'] ?? '' }}</span>
                                             </div>
                                         @endif
@@ -777,7 +1359,7 @@
                                 @if($previewReplyContext)
                                     <div class="evo-ui-issue-reply__context">
                                         <x-evo::icon name="corner-up-left" />
-                                        <span>@lang('dIssues::global.replying_to') {{ $previewReplyContextAuthor['label'] ?? 'Manager' }}</span>
+                                        <span>@lang('dIssues::global.replying_to') {{ $previewReplyContextAuthor['label'] ?? __('dIssues::global.manager') }}</span>
                                         <button type="button" class="evo-ui-btn evo-ui-btn--icon" title="@lang('dIssues::global.cancel_reply')" aria-label="@lang('dIssues::global.cancel_reply')" wire:click="cancelReplyToComment">
                                             <x-evo::icon name="x" />
                                         </button>

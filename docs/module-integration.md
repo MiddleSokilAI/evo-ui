@@ -1,8 +1,15 @@
 # Module Integration
 
-This guide shows how a module should consume evo-ui.
+This guide is the canonical integration contract for consuming `evo-ui` from an
+Evolution CMS manager module.
 
-## Composer
+`evo-ui` owns the shared manager UI runtime: iframe shell, local assets,
+Evolution theme bridge, Livewire bridge, Blade components, declarative table,
+form and workspace rendering, and manager-session UI state. The consuming module
+owns routes, permissions, data providers, persistence, domain actions,
+translations, migrations and business rules.
+
+## Install
 
 Require the package from the consuming module:
 
@@ -14,16 +21,48 @@ Require the package from the consuming module:
 }
 ```
 
-The package service provider registers:
+During package discovery the service provider registers:
 
 - Blade namespace: `evo::...`
-- Livewire components: `evo-ui.table`, `evo-ui.form`, `evo-ui.module-table`,
-  `evo-ui.issue-workspace`
-- Theme/assets helpers required by the manager iframe
+- anonymous Blade components: `x-evo::...`
+- Livewire components: `evo-ui.table`, `evo-ui.form`,
+  `evo-ui.module-table`, `evo-ui.issue-workspace`
+- manager-aware Livewire update/script routes
+- local asset publishing under `assets/modules/evo-ui`
+- shared support services such as manager context, permissions, config forms,
+  resource forms, language bridge, rich editor integration and TV values
 
-## Module Shell
+## Service Provider Pattern
 
-Use `x-evo::layout` as the outer document wrapper for new manager screens.
+The consuming module should register its own views, translations, routes and
+config presets. Merge table and form presets under stable keys that match the
+rendered `preset` value.
+
+```php
+public function boot(): void
+{
+    $this->loadViewsFrom(__DIR__ . '/../views', 'VendorModule');
+    $this->loadTranslationsFrom(__DIR__ . '/../lang', 'VendorModule');
+
+    $this->mergeConfigFrom(
+        __DIR__ . '/../config/items/table.php',
+        'vendor.module.items.table'
+    );
+
+    $this->mergeConfigFrom(
+        __DIR__ . '/../config/settings/form.php',
+        'evo-ui.forms.vendor.module.settings'
+    );
+}
+```
+
+Use module-owned route/controller names. Do not register `evo-ui` as a manager
+module and do not copy `evo-ui` provider internals into the consuming module.
+
+## Manager Shell
+
+Use `x-evo::layout` as the outer document wrapper for new evo-ui-owned manager
+screens:
 
 ```blade
 <x-evo::layout :title="$pageTitle">
@@ -42,35 +81,81 @@ Use `x-evo::layout` as the outer document wrapper for new manager screens.
 </x-evo::layout>
 ```
 
-The iframe should not include manager `styles.min.css`, Bootstrap, jQuery,
-`main.js`, `tabpane.js`, Roboto, or CDN UI libraries. evo-ui assets are local and
-theme-aware.
-
-## Assets
-
-The layout includes the package asset partial. If a legacy shell must include
-assets manually, use:
+When a module still has a transitional custom shell, it must include the
+evo-ui asset partial and expose the evo-ui root marker:
 
 ```blade
 @include('evo::partials.assets')
+
+<main class="evo-ui {{ $themeClasses }}" data-evo-ui-root>
+    ...
+</main>
 ```
 
-The asset partial loads:
+Prefer the layout component for new screens. Use the transitional shell only
+when a module must keep legacy-compatible outer markup while individual surfaces
+are migrated.
+
+## Asset Rules
+
+An evo-ui-owned screen must not load the old manager UI stack:
+
+- no manager `styles.min.css`
+- no Bootstrap as a UI dependency
+- no jQuery or jQuery UI for shared evo-ui behavior
+- no `main.js`
+- no `tabpane.js`
+- no Roboto or CDN UI assets
+- no module-local CSS/JS for primitives already owned by evo-ui
+
+The package asset partial loads:
 
 - `assets/modules/evo-ui/evo-ui.css`
 - `assets/modules/evo-ui/evo-ui.js`
 - Livewire styles/scripts when available
-- theme configuration for `evolight`, `evolightness`, `evodark`, `evodarkness`
+- theme configuration for `evolight`, `evolightness`, `evodark`,
+  `evodarkness`
+
+Module-specific scripts are allowed only for genuinely domain-specific behavior.
+If the behavior is a reusable table, form, modal, workspace, editor, picker,
+dirty-state or state-persistence primitive, it belongs in `evo-ui`.
+
+## Module Tabs
+
+Use module tabs for manager sections, not for table filters:
+
+```php
+$tabs = [
+    [
+        'key' => 'items',
+        'label' => 'VendorModule::global.items',
+        'icon' => 'table',
+        'href' => $moduleUrl . '&get=items',
+    ],
+    [
+        'key' => 'settings',
+        'label' => 'global.settings_config',
+        'icon' => 'settings',
+        'href' => $moduleUrl . '&get=settings',
+    ],
+];
+```
+
+Dirty-state behavior is shared: form surfaces dispatch `evo-ui:form.saved`,
+`evo-ui:form.saving` and `evo-ui:form.reset` events; module panels should wait
+for a clean form before switching tabs or should show an unsaved-changes prompt.
+The module may decide which tab becomes active, but the dirty-state mechanism
+should remain the evo-ui pattern.
 
 ## Module Table Preset
 
-Create a table config in the consuming module, for example:
+Create a table config in the consuming module:
 
 ```php
-// config/items/table.php
 return [
     'key' => 'vendor.module.items',
     'provider' => Vendor\Module\Tables\ItemsTableData::class,
+    'wire_target' => 'search,perPage,applyMultiFilter,setSort,switchView',
     'per_page' => 10,
     'per_page_options' => [10, 20, 50, 100],
     'views' => ['table', 'list'],
@@ -84,13 +169,7 @@ return [
 ];
 ```
 
-Merge it from the module service provider:
-
-```php
-$this->mergeConfigFrom(__DIR__ . '/../config/items/table.php', 'vendor.module.items.table');
-```
-
-Then render it:
+Render it with the same preset key:
 
 ```blade
 <livewire:evo-ui.module-table
@@ -99,21 +178,47 @@ Then render it:
 />
 ```
 
+The provider receives `context`, Livewire `state`, and resolved `config`:
+
+```php
+final class ItemsTableData
+{
+    public function __construct(
+        protected array $context = [],
+        protected array $state = [],
+        protected array $config = [],
+    ) {}
+
+    public function total(): int {}
+
+    public function rows(int $page, int $perPage): array {}
+
+    public function filterGroups(): array
+    {
+        return [];
+    }
+}
+```
+
+Providers own data retrieval, query filtering and persistence. `evo-ui` owns the
+toolbar, filters, sorting controls, table/list rendering, modal shell, inline
+edit UI and session state.
+
 ## Settings Form Preset
 
-Use `evo-ui.form` for module settings or resource-like forms:
+Use `evo-ui.form` for config, model or resource-like forms:
 
 ```php
 return [
     'key' => 'vendor.module.settings',
     'variant' => 'config',
-    'title' => 'module::global.settings',
+    'title' => 'VendorModule::global.settings',
     'source' => [
         'type' => 'config',
         'file' => 'vendor/module/settings.php',
     ],
     'tabs' => [
-        ['name' => 'general', 'label' => 'module::global.general', 'icon' => 'settings'],
+        ['name' => 'general', 'label' => 'global.settings_config', 'icon' => 'settings'],
     ],
     'sections' => [
         [
@@ -132,6 +237,9 @@ Render it:
 ```blade
 <livewire:evo-ui.form preset="vendor.module.settings" />
 ```
+
+Form configs describe fields and save behavior; the module owns the config file,
+model or resource being saved.
 
 ## Issue Workspace Preset
 
@@ -160,48 +268,23 @@ return [
 />
 ```
 
-## Provider
+The provider owns projects, statuses, categories, assignees, issue persistence
+and workflow rules. `evo-ui` owns the generic list/kanban UI, filters, selected
+issue preview, editor shell, drag/drop contract and state behavior.
 
-The provider receives `context`, Livewire `state`, and the resolved `config`:
+## Integration Checklist
 
-```php
-final class ItemsTableData
-{
-    public function __construct(
-        protected array $context = [],
-        protected array $state = [],
-        protected array $config = [],
-    ) {}
-
-    public function total(): int {}
-
-    public function rows(int $page, int $perPage): array {}
-
-    public function filterGroups(): array
-    {
-        return [];
-    }
-}
-```
-
-Optional provider methods can back actions:
-
-- `selectedEditUrl(array $action, ?int $selectedId): string`
-- `selectedDeleteHref(array $action, ?int $selectedId): string`
-- `selectedDeleteActionAttributes(array $action, ?int $selectedId): array`
-- `createUrl(array $action): string`
-- `duplicate(int $id): void`
-- `togglePublished(int $id): void`
-
-## Implementation Checklist
-
-- Set `wire_target` to every Livewire method that can refresh the table.
-- Keep default `per_page` small enough for manager pages; `10` is the safe
-  default for rich rows.
-- Add `sortable => true` and `sort_field` to every column that should sort.
-- Add `default_sort` for the most useful operational order.
-- Add list view only when the same data can be scanned better as cards.
-- Use `row_states` for visual state such as unpublished rows.
+- Register module views, translations, routes and config in the consuming
+  module provider.
+- Use `x-evo::layout` for new evo-ui-owned manager documents.
+- Keep legacy manager assets out of evo-ui screens.
+- Merge table presets under stable keys and render the same key.
+- Merge form presets under `evo-ui.forms.*`.
+- Pass only stable context values such as `moduleUrl`, `type`, `site` or
+  `module`.
+- Keep module-specific data, permissions and actions in providers.
+- Use session-persistent table/workspace state unless a task explicitly requires
+  another storage contract.
 - Clear Evolution/Laravel view cache after changing Blade:
 
 ```bash

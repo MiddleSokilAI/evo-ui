@@ -13,6 +13,7 @@
     $customView = $controller->customFieldView($field);
     $help = $field['help'] ?? $field['description'] ?? null;
     $helpText = $help ? __($help) : '';
+    $hintText = !empty($field['hint']) ? __($field['hint']) : '';
     $numberRuleValue = static function (array $field, string $rule): ?string {
         foreach ($field['rules'] ?? [] as $item) {
             if (is_string($item) && str_starts_with($item, $rule . ':')) {
@@ -279,8 +280,14 @@
             >
         @endif
 
-        @if(!empty($field['hint']) && $type !== 'checkbox')
-            <span class="evo-ui-field__hint">{{ __($field['hint']) }}</span>
+        @if($hintText !== '')
+            <span class="evo-ui-field__hint">
+                @if(!empty($field['hint_html']))
+                    {!! $hintText !!}
+                @else
+                    {{ $hintText }}
+                @endif
+            </span>
         @endif
 
         @if($error)
