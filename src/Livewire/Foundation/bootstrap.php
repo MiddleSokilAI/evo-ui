@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/Auth/Access/AuthorizesRequests.php';
 require_once __DIR__ . '/Auth/Access/AuthorizationException.php';
+require_once __DIR__ . '/Auth/Access/Response.php';
 require_once __DIR__ . '/Http/Middleware/TrimStrings.php';
 require_once __DIR__ . '/Http/Middleware/ConvertEmptyStringsToNull.php';
 require_once __DIR__ . '/Http/Events/RequestHandled.php';
@@ -31,6 +32,10 @@ devo_ui_alias_type(
 devo_ui_alias_type(
     'Illuminate\\Auth\\Access\\AuthorizationException',
     EvoUI\Livewire\Foundation\Auth\Access\AuthorizationException::class
+);
+devo_ui_alias_type(
+    'Illuminate\\Auth\\Access\\Response',
+    EvoUI\Livewire\Foundation\Auth\Access\Response::class
 );
 devo_ui_alias_type(
     'Illuminate\\Foundation\\Http\\Middleware\\TrimStrings',

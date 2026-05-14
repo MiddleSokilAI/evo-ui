@@ -11,7 +11,9 @@ class IssueWorkspace extends Component
 {
     public string $preset = '';
     public ?string $provider = null;
+    /** @var array<string, mixed> */
     public array $context = [];
+    /** @var array<string, mixed> */
     public array $filters = [
         'category_id' => 0,
         'status_id' => 0,
@@ -32,6 +34,7 @@ class IssueWorkspace extends Component
     public bool $issueBodyEditing = false;
     public string $issueBodyDraft = '';
 
+    /** @param array<string, mixed> $context */
     public function mount(string $preset, ?string $provider = null, array $context = []): void
     {
         $this->preset = $preset;
@@ -78,6 +81,7 @@ class IssueWorkspace extends Component
         $this->dispatchClientState();
     }
 
+    /** @param array<int, int|string> $values */
     public function applyMultiFilter(string $state, array $values): void
     {
         $options = match ($state) {
@@ -338,18 +342,17 @@ class IssueWorkspace extends Component
         $this->dispatchClientState();
     }
 
+    /** @param array<int, array<string, mixed>> $lanes */
     public function sortKanbanLanes(array $lanes): void
     {
         $provider = $this->provider();
 
-        if (!$provider || !method_exists($provider, 'sortKanbanLanes')) {
+        if (!$provider) {
             return;
         }
 
         $normalized = collect($lanes)
-            ->map(function ($lane) {
-                $lane = is_array($lane) ? $lane : [];
-
+            ->map(function (array $lane) {
                 return [
                     'status_id' => max(0, (int) ($lane['status_id'] ?? 0)),
                     'issue_ids' => $this->normalizeIdList((array) ($lane['issue_ids'] ?? [])),
@@ -432,7 +435,8 @@ class IssueWorkspace extends Component
     {
         $issueList = $this->filters['display'] === 'list' ? $this->issueList() : [];
 
-        return view('evo::livewire.issue-workspace', [
+        /** @var View $view */
+        $view = view('evo::livewire.issue-workspace', [
             'config' => $this->workspaceConfig(),
             'projects' => $this->projects(),
             'categories' => $this->categories(),
@@ -449,6 +453,8 @@ class IssueWorkspace extends Component
             'issueList' => $issueList,
             'selectedIssue' => $this->selectedIssue($issueList),
         ]);
+
+        return $view;
     }
 
     protected function normalizeFilters(): void
@@ -524,6 +530,10 @@ class IssueWorkspace extends Component
             ->all();
     }
 
+    /**
+     * @param array<int, mixed> $values
+     * @return array<int, int>
+     */
     protected function normalizeIdList(array $values): array
     {
         return collect($values)
@@ -534,6 +544,10 @@ class IssueWorkspace extends Component
             ->all();
     }
 
+    /**
+     * @param array<int, mixed> $values
+     * @return array<int, int>
+     */
     protected function normalizeAssigneeIdList(array $values): array
     {
         return collect($values)
@@ -567,6 +581,7 @@ class IssueWorkspace extends Component
         return 'evo-ui.issue-workspace.' . sha1($this->preset . '|' . json_encode($context));
     }
 
+    /** @return array<string, mixed> */
     public function persistedState(): array
     {
         return [
@@ -627,27 +642,31 @@ class IssueWorkspace extends Component
         return $provider instanceof IssueWorkspaceProvider ? $provider : null;
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function categories(): array
     {
         $provider = $this->provider();
 
-        return $provider && method_exists($provider, 'categories') ? (array) $provider->categories() : [];
+        return $provider ? (array) $provider->categories() : [];
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function projects(): array
     {
         $provider = $this->provider();
 
-        return $provider && method_exists($provider, 'projects') ? (array) $provider->projects() : [];
+        return $provider ? (array) $provider->projects() : [];
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function statuses(): array
     {
         $provider = $this->provider();
 
-        return $provider && method_exists($provider, 'statuses') ? (array) $provider->statuses() : [];
+        return $provider ? (array) $provider->statuses() : [];
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function phases(): array
     {
         $provider = $this->provider();
@@ -655,6 +674,7 @@ class IssueWorkspace extends Component
         return $provider && method_exists($provider, 'phases') ? (array) $provider->phases() : [];
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function priorities(): array
     {
         $provider = $this->provider();
@@ -666,17 +686,19 @@ class IssueWorkspace extends Component
         return (array) $this->workspaceConfig('priorities', []);
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function assignees(): array
     {
         $provider = $this->provider();
 
-        if ($provider && method_exists($provider, 'assignees')) {
+        if ($provider) {
             return (array) $provider->assignees();
         }
 
         return (array) $this->workspaceConfig('assignees', []);
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function displays(): array
     {
         return (array) $this->workspaceConfig('displays', [
@@ -685,6 +707,7 @@ class IssueWorkspace extends Component
         ]);
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function archiveModes(): array
     {
         return (array) $this->workspaceConfig('archive_modes', [
@@ -693,27 +716,34 @@ class IssueWorkspace extends Component
         ]);
     }
 
+    /** @return array<string, mixed> */
     protected function metrics(): array
     {
         $provider = $this->provider();
 
-        return $provider && method_exists($provider, 'metrics') ? (array) $provider->metrics($this->filters) : [];
+        return $provider ? (array) $provider->metrics($this->filters) : [];
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function kanbanLanes(): array
     {
         $provider = $this->provider();
 
-        return $provider && method_exists($provider, 'kanbanLanes') ? (array) $provider->kanbanLanes($this->filters) : [];
+        return $provider ? (array) $provider->kanbanLanes($this->filters) : [];
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function issueList(): array
     {
         $provider = $this->provider();
 
-        return $provider && method_exists($provider, 'issueList') ? (array) $provider->issueList($this->filters) : [];
+        return $provider ? (array) $provider->issueList($this->filters) : [];
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $issueList
+     * @return array<string, mixed>|null
+     */
     protected function selectedIssue(array $issueList = []): ?array
     {
         if ($this->selectedIssueId) {
@@ -729,11 +759,12 @@ class IssueWorkspace extends Component
         return $firstIssueId > 0 ? $this->issuePreview($firstIssueId) : null;
     }
 
+    /** @return array<string, mixed>|null */
     protected function issuePreview(int $issueId): ?array
     {
         $provider = $this->provider();
 
-        if (!$provider || !method_exists($provider, 'issuePreview')) {
+        if (!$provider) {
             return null;
         }
 

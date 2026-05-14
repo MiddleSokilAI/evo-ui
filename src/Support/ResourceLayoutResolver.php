@@ -2,6 +2,8 @@
 
 namespace EvoUI\Support;
 
+use Illuminate\Database\Eloquent\Model;
+
 class ResourceLayoutResolver
 {
     public function __construct(
@@ -9,7 +11,11 @@ class ResourceLayoutResolver
     ) {
     }
 
-    public function resolve(array $config, ?object $resource = null): array
+    /**
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>
+     */
+    public function resolve(array $config, ?Model $resource = null): array
     {
         $config['sections'] = $this->normalizeSections($config['sections'] ?? []);
 
@@ -20,6 +26,10 @@ class ResourceLayoutResolver
         return $config;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $sections
+     * @return array<int, array<string, mixed>>
+     */
     protected function normalizeSections(array $sections): array
     {
         return collect($sections)
@@ -35,6 +45,10 @@ class ResourceLayoutResolver
             ->all();
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<string, mixed>
+     */
     protected function normalizeField(array $field): array
     {
         $catalog = $this->catalog->resourceFields()[$field['name'] ?? ''] ?? [];
@@ -42,7 +56,12 @@ class ResourceLayoutResolver
         return array_replace_recursive($catalog, $field);
     }
 
-    protected function appendTemplateVariables(array $config, ?object $resource, array $sections): array
+    /**
+     * @param array<string, mixed> $config
+     * @param array<int, array<string, mixed>> $sections
+     * @return array<int, array<string, mixed>>
+     */
+    protected function appendTemplateVariables(array $config, ?Model $resource, array $sections): array
     {
         $templateId = (int) ($resource?->getAttribute('template') ?? data_get($config, 'source.template', 0));
         $fields = $this->catalog->templateVariableFields($templateId);

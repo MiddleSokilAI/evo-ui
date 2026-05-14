@@ -4,6 +4,10 @@ namespace EvoUI\Support;
 
 class RichTextEditor
 {
+    /**
+     * @param string|array<int, string> $ids
+     * @param array<string, array<string, mixed>> $options
+     */
     public static function html(
         string|array $ids,
         string $height = '500px',
@@ -50,6 +54,7 @@ class RichTextEditor
         return $editor;
     }
 
+    /** @return array<int, string> */
     public static function registered(): array
     {
         $registered = evo()->invokeEvent('OnRichTextEditorRegister');
@@ -63,6 +68,10 @@ class RichTextEditor
             ->all();
     }
 
+    /**
+     * @param string|array<int, string> $ids
+     * @return array<int, string>
+     */
     protected static function elements(string|array $ids): array
     {
         return collect(is_array($ids) ? $ids : explode(',', $ids))
@@ -73,4 +82,3 @@ class RichTextEditor
             ->all();
     }
 }
-

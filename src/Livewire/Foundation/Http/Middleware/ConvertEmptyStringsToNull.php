@@ -6,6 +6,7 @@ use Closure;
 
 class ConvertEmptyStringsToNull
 {
+    /** @var list<callable> */
     protected static array $skipCallbacks = [];
 
     public static function skipWhen(callable $callback): void
@@ -13,12 +14,12 @@ class ConvertEmptyStringsToNull
         static::$skipCallbacks[] = $callback;
     }
 
-    public function handle($request, Closure $next)
+    public function handle(mixed $request, Closure $next): mixed
     {
         return $next($request);
     }
 
-    public static function shouldSkip($request): bool
+    public static function shouldSkip(mixed $request): bool
     {
         foreach (static::$skipCallbacks as $callback) {
             if ($callback($request)) {

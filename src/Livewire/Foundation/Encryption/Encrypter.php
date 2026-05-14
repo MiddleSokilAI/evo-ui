@@ -61,11 +61,13 @@ class Encrypter implements EncrypterContract
         return $this->key;
     }
 
+    /** @return list<string> */
     public function getAllKeys(): array
     {
         return [$this->key];
     }
 
+    /** @return list<string> */
     public function getPreviousKeys(): array
     {
         return [];

@@ -69,7 +69,7 @@
         @endforeach
     </div>
 
-    <div class="evo-ui-table-controls">
+    <div class="evo-ui-table-controls" x-data="{ searchOpen: false }">
         @if(in_array('list', $config['views'] ?? [], true))
             <div class="evo-ui-view-toggle" aria-label="@lang('evo::global.view_mode')">
                 <button

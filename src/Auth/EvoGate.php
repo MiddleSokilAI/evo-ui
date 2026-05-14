@@ -3,12 +3,16 @@
 namespace EvoUI\Auth;
 
 use EvoUI\Support\ManagerContext;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Contracts\Auth\Access\Gate;
 
 class EvoGate implements Gate
 {
+    /** @var array<string, callable|string> */
     protected array $abilities = [];
+    /** @var list<callable> */
     protected array $before = [];
+    /** @var list<callable> */
     protected array $after = [];
     protected mixed $user = null;
 
@@ -23,6 +27,9 @@ class EvoGate implements Gate
         return $this;
     }
 
+    /**
+     * @param array<string, string>|null $abilities
+     */
     public function resource($name, $class, ?array $abilities = null)
     {
         return $this;
@@ -45,20 +52,29 @@ class EvoGate implements Gate
         return $this;
     }
 
+    /**
+     * @param string|\UnitEnum|iterable<int, string|\UnitEnum> $ability
+     */
     public function allows($ability, $arguments = [])
     {
         return $this->check($ability, $arguments);
     }
 
+    /**
+     * @param string|\UnitEnum|iterable<int, string|\UnitEnum> $ability
+     */
     public function denies($ability, $arguments = [])
     {
         return !$this->check($ability, $arguments);
     }
 
+    /**
+     * @param string|\UnitEnum|iterable<int, string|\UnitEnum> $abilities
+     */
     public function check($abilities, $arguments = [])
     {
         foreach ((array) $abilities as $ability) {
-            if (!$this->raw($ability, $arguments)) {
+            if (!$this->raw($this->abilityName($ability), $arguments)) {
                 return false;
             }
         }
@@ -66,10 +82,13 @@ class EvoGate implements Gate
         return true;
     }
 
+    /**
+     * @param string|\UnitEnum|iterable<int, string|\UnitEnum> $abilities
+     */
     public function any($abilities, $arguments = [])
     {
         foreach ((array) $abilities as $ability) {
-            if ($this->raw($ability, $arguments)) {
+            if ($this->raw($this->abilityName($ability), $arguments)) {
                 return true;
             }
         }
@@ -79,16 +98,18 @@ class EvoGate implements Gate
 
     public function authorize($ability, $arguments = [])
     {
-        if (!$this->raw($ability, $arguments)) {
+        if (!$this->raw($this->abilityName($ability), $arguments)) {
             throw new \Illuminate\Auth\Access\AuthorizationException('This action is unauthorized.');
         }
 
-        return true;
+        return Response::allow();
     }
 
     public function inspect($ability, $arguments = [])
     {
-        return $this->raw($ability, $arguments);
+        return $this->raw($this->abilityName($ability), $arguments)
+            ? Response::allow()
+            : Response::deny('This action is unauthorized.');
     }
 
     public function raw($ability, $arguments = [])
@@ -126,11 +147,17 @@ class EvoGate implements Gate
         return $clone;
     }
 
+    /**
+     * @return array<string, callable|string>
+     */
     public function abilities()
     {
         return $this->abilities;
     }
 
+    /**
+     * @param array<int|string, mixed> $arguments
+     */
     protected function resolve(string $ability, array $arguments): bool
     {
         if (isset($this->abilities[$ability])) {
@@ -146,7 +173,7 @@ class EvoGate implements Gate
         return $manager->can($ability);
     }
 
-    protected function abilityName($ability): string
+    protected function abilityName(string|\UnitEnum $ability): string
     {
         return $ability instanceof \UnitEnum ? $ability->name : (string) $ability;
     }

@@ -7,6 +7,9 @@ use Livewire\Mechanisms\HandleRequests\EndpointResolver;
 
 class LivewireAssets
 {
+    /**
+     * @param array<string, mixed> $options
+     */
     public static function scripts(array $options = []): string
     {
         if (!class_exists(FrontendAssets::class)) {
@@ -40,7 +43,10 @@ class LivewireAssets
 
     protected static function manifestVersion(): string
     {
-        $manifestPath = dirname((new \ReflectionClass(FrontendAssets::class))->getFileName(), 4) . '/dist/manifest.json';
+        $frontendAssetsPath = (new \ReflectionClass(FrontendAssets::class))->getFileName();
+        $manifestPath = is_string($frontendAssetsPath)
+            ? dirname($frontendAssetsPath, 4) . '/dist/manifest.json'
+            : '';
 
         if (!is_file($manifestPath)) {
             return 'dev';
@@ -70,6 +76,9 @@ class LivewireAssets
         return '/' . trim(trim($base, '/') . '/' . trim($path, '/'), '/');
     }
 
+    /**
+     * @param array<string, mixed> $attributes
+     */
     protected static function attributes(array $attributes): string
     {
         $html = [];

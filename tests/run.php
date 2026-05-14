@@ -5,6 +5,7 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 $passed = 0;
 $failed = 0;
+$assertions = 0;
 $currentGroup = 'general';
 
 function evo_ui_group(string $name, Closure $tests): void
@@ -37,6 +38,10 @@ function evo_ui_test(string $name, Closure $test): void
 
 function evo_ui_assert(bool $condition, string $message): void
 {
+    global $assertions;
+
+    $assertions++;
+
     if (!$condition) {
         throw new RuntimeException($message);
     }
@@ -44,6 +49,10 @@ function evo_ui_assert(bool $condition, string $message): void
 
 function evo_ui_assert_same(mixed $expected, mixed $actual, string $message): void
 {
+    global $assertions;
+
+    $assertions++;
+
     if ($expected !== $actual) {
         throw new RuntimeException($message . ' Expected: ' . var_export($expected, true) . ' Actual: ' . var_export($actual, true));
     }
@@ -59,12 +68,40 @@ function evo_ui_assert_not_contains(string $needle, string $haystack, string $me
     evo_ui_assert(!str_contains($haystack, $needle), $message);
 }
 
+function evo_ui_assert_order(string $first, string $second, string $haystack, string $message): void
+{
+    $firstPosition = strpos($haystack, $first);
+    $secondPosition = strpos($haystack, $second);
+
+    evo_ui_assert($firstPosition !== false, $message . ' Missing first marker: ' . $first);
+    evo_ui_assert($secondPosition !== false, $message . ' Missing second marker: ' . $second);
+    evo_ui_assert($firstPosition < $secondPosition, $message . ' First marker must appear before second marker.');
+}
+
+function evo_ui_css_block(string $selector, string $css): string
+{
+    $start = strpos($css, $selector . ' {');
+    evo_ui_assert($start !== false, 'Expected CSS selector to exist: ' . $selector);
+    $start = is_int($start) ? $start : 0;
+
+    $end = strpos($css, "\n}", $start);
+    evo_ui_assert($end !== false, 'Expected CSS selector block to close: ' . $selector);
+    $end = is_int($end) ? $end : $start;
+
+    return substr($css, $start, $end - $start + 2);
+}
+
 function evo_ui_assert_no_inline_blade_conditionals_in_opening_tags(string $path): void
 {
     $contents = evo_ui_read($path);
     preg_match_all('/<[A-Za-z][^>]*@(?:if|unless|isset|empty|switch|foreach|for|while)\b[^>]*>/s', $contents, $matches);
 
     evo_ui_assert($matches[0] === [], 'Blade conditionals must not be inside opening tags in ' . $path . ': ' . implode(' | ', $matches[0]));
+}
+
+function evo_ui_exit_code(int $failed): int
+{
+    return $failed > 0 ? 1 : 0;
 }
 
 function evo_ui_path(string $path): string
@@ -82,6 +119,7 @@ function evo_ui_read(string $path): string
     return (string) file_get_contents($absolute);
 }
 
+/** @return array<string, mixed> */
 function evo_ui_config(string $path): array
 {
     $absolute = evo_ui_path($path);
@@ -871,6 +909,52 @@ evo_ui_group('assets', function (): void {
             evo_ui_assert_contains($marker, $css, 'Missing inline-create CSS marker: ' . $marker);
         }
     });
+
+    evo_ui_test('form save action keeps stable visual width while exposing saved feedback', function (): void {
+        $form = evo_ui_read('views/components/form.blade.php');
+        $actions = evo_ui_read('docs/en/components/action-buttons.md');
+
+        evo_ui_assert_contains('savedFeedback: @js($saved)', $form, 'Form must keep a local saved-feedback state.');
+        evo_ui_assert_contains('savedFeedbackTimer', $form, 'Form saved feedback must auto-reset through a timer.');
+        evo_ui_assert_contains("this.savedFeedback = true;", $form, 'Form saved handler must enable saved feedback.');
+        evo_ui_assert_contains("this.savedFeedback = false;", $form, 'Form dirty handler must clear saved feedback.');
+        evo_ui_assert_contains("x-bind:title=\"savedFeedback ? @js(__('evo::global.form_saved'))", $form, 'Save button must expose saved feedback through title.');
+        evo_ui_assert_contains("x-bind:aria-label=\"savedFeedback ? @js(__('evo::global.form_saved'))", $form, 'Save button must expose saved feedback through aria-label.');
+        evo_ui_assert_contains('x-bind:disabled="!dirty || savedFeedback"', $form, 'Save button must be disabled while clean or showing saved feedback.');
+        evo_ui_assert_contains("x-bind:class=\"{ 'is-disabled': !dirty || savedFeedback, 'is-saved': savedFeedback }\"", $form, 'Save button must expose a saved visual state without custom markup.');
+        evo_ui_assert_contains('<x-evo::icon :name="$action[\'icon\'] ?? \'check\'" class="evo-ui-btn__icon" x-show="!savedFeedback" />', $form, 'Save button must show the normal icon before save.');
+        evo_ui_assert_contains('<x-evo::icon name="circle-check" class="evo-ui-btn__icon" x-show="savedFeedback" x-cloak />', $form, 'Save button must switch icon after save.');
+        evo_ui_assert_contains('<span class="evo-ui-btn__label">@lang($action[\'label\'] ?? \'evo::global.action_save\')</span>', $form, 'Save button label must remain action_save so button width does not jump.');
+        evo_ui_assert_not_contains('<span class="evo-ui-btn__label">@lang(\'evo::global.form_saved\')</span>', $form, 'Saved feedback must not replace the visible label and resize the button.');
+        evo_ui_assert_not_contains('x-text="savedFeedback', $form, 'Saved feedback must not use dynamic text that changes the button width.');
+        evo_ui_assert_contains('the visible label stays on `evo::global.action_save`', $actions, 'Action button docs must freeze the non-jumping save label rule.');
+    });
+
+    evo_ui_test('settings rows and listbox selects preserve shared manager geometry', function (): void {
+        $css = evo_ui_read('resources/css/evo-ui.css');
+        $row = evo_ui_read('views/components/settings-row.blade.php');
+        $settingsBlock = evo_ui_css_block('.evo-ui-settings-row', $css);
+        $metaBlock = evo_ui_css_block('.evo-ui-settings-row__meta', $css);
+        $usageBlock = evo_ui_css_block('.evo-ui-settings-row__usage', $css);
+        $listboxBlock = evo_ui_css_block('select.evo-ui-input.evo-ui-select--listbox:not([multiple])', $css);
+
+        evo_ui_assert_contains('data-evo-settings-row', $row, 'Settings row component must expose a stable row marker.');
+        evo_ui_assert_contains('evo-ui-settings-row__meta', $row, 'Settings row must keep labels in the meta lane.');
+        evo_ui_assert_contains('evo-ui-settings-row__control', $row, 'Settings row must keep controls in the control lane.');
+        evo_ui_assert_contains('grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);', $settingsBlock, 'Settings rows must give labels enough width for long setting names and usage snippets.');
+        evo_ui_assert_contains('gap: 14px;', $settingsBlock, 'Settings rows must keep a compact but readable label/control gap.');
+        evo_ui_assert_contains('align-items: start;', $settingsBlock, 'Settings rows must top-align tall controls.');
+        evo_ui_assert_contains('justify-items: end;', $metaBlock, 'Settings row labels must stay right-aligned.');
+        evo_ui_assert_contains('text-align: right;', $metaBlock, 'Settings row meta lane must align text to the control edge.');
+        evo_ui_assert_contains('overflow-wrap: anywhere;', $usageBlock, 'Settings usage code must wrap instead of being clipped.');
+        evo_ui_assert_contains('white-space: normal;', $usageBlock, 'Settings usage code must not force a single clipped line.');
+        evo_ui_assert_not_contains('overflow: hidden;', $usageBlock, 'Settings usage code must not hide long evo config snippets.');
+        evo_ui_assert_not_contains('text-overflow: ellipsis;', $usageBlock, 'Settings usage code must not silently truncate long evo config snippets.');
+        evo_ui_assert_contains('height: 150px;', $listboxBlock, 'Single-select listbox must override the generic select height.');
+        evo_ui_assert_contains('min-height: 150px;', $listboxBlock, 'Single-select listbox must keep a stable listbox height.');
+        evo_ui_assert_contains('line-height: normal;', $listboxBlock, 'Single-select listbox must not inherit compact single-select line height.');
+        evo_ui_assert_order('select.evo-ui-input:not([multiple]) {', 'select.evo-ui-input.evo-ui-select--listbox:not([multiple]) {', $css, 'Listbox override must come after the generic single-select rule.');
+    });
 });
 
 evo_ui_group('drift-guards', function (): void {
@@ -1200,6 +1284,44 @@ evo_ui_group('builder', function (): void {
         }
     });
 
+    evo_ui_test('table and list dnd previews keep one visible drag surface and one placeholder', function (): void {
+        $js = evo_ui_read('resources/js/evo-ui.js');
+        $css = evo_ui_read('resources/css/evo-ui.css');
+        $tablePlaceholderBlock = evo_ui_css_block('.evo-ui-dnd-placeholder__table-inner', $css);
+        $tablePreviewBlock = evo_ui_css_block('.evo-ui-dnd-floating-preview--table', $css);
+        $tableDragHiddenBlock = evo_ui_css_block('.evo-ui-table-row--dnd.is-drag-hidden', $css);
+
+        foreach ([
+            'function createTransparentNativeDragImage()' => 'Table DnD must suppress the browser ghost with a transparent native image.',
+            'function createTableDragPreview(row, event)' => 'Table DnD must render an EvoUI-owned floating table preview.',
+            'function updateTableDragPreview(event)' => 'Table DnD must move the floating table preview under the pointer.',
+            'function removeTableDragPreview()' => 'Table DnD must remove the floating table preview after drop/cancel.',
+            "row.tagName && row.tagName.toLowerCase() === 'tr'" => 'Runtime must special-case table rows during native DnD.',
+            'tableDragPreview = createTableDragPreview(row, event);' => 'Runtime must create a visible table preview for table rows.',
+            'updateTableDragPreview(event);' => 'Runtime must update the visible table preview while dragging.',
+            'removeTableDragPreview();' => 'Runtime cleanup must always remove the table preview.',
+            'return createTransparentNativeDragImage();' => 'Table rows must not rely on a second browser-rendered drag ghost.',
+            'return row;' => 'List/card rows must keep their normal native preview path.',
+            "clone.classList.remove('is-dragging', 'is-drag-hidden', 'is-drag-over', 'is-drop-target');" => 'Preview clone must not inherit hidden/dragging state.',
+            'stripReactivePreviewAttributes(clone);' => 'Preview clone must not carry Livewire/Alpine attributes.',
+            'cell.style.width = Math.max(1, Math.round(source.getBoundingClientRect().width)) + \'px\';' => 'Preview clone must preserve source cell widths.',
+            'td.colSpan = Math.max(1, row.children ? row.children.length : 1);' => 'Table placeholder must span the real table width.',
+            "placeholder.setAttribute('data-evo-dnd-placeholder-height', String(height));" => 'Placeholder must cache source row height.',
+            "target.style.height = height + 'px';" => 'Placeholder inner surface must match source row height.',
+        ] as $marker => $message) {
+            evo_ui_assert_contains($marker, $js, $message);
+        }
+
+        evo_ui_assert_contains('border: 1px dashed', $tablePlaceholderBlock, 'Table placeholder must render as a visible dashed drop slot.');
+        evo_ui_assert_contains('background: color-mix', $tablePlaceholderBlock, 'Table placeholder must have a visible surface.');
+        evo_ui_assert_contains('opacity: 0.78;', $tablePreviewBlock, 'Table floating preview must stay translucent enough to see the drop slot.');
+        evo_ui_assert_contains('table-layout: fixed;', $tablePreviewBlock, 'Table floating preview must preserve column geometry.');
+        evo_ui_assert_contains('display: none;', $tableDragHiddenBlock, 'Dragged table row must leave layout so an empty duplicate row is not visible.');
+        evo_ui_assert_contains('.evo-ui-list-item--dnd.is-drag-hidden {' . PHP_EOL . '    position: absolute !important;', $css, 'Dragged list item must stay available for native preview without occupying the list flow.');
+        evo_ui_assert_order('function createTransparentNativeDragImage()', 'function createTableDragPreview(row, event)', $js, 'Transparent native image helper must be defined before table preview helper.');
+        evo_ui_assert_order('removeTableDragPreview();', 'removeNativeDragImage();', $js, 'Cleanup must remove the custom table preview before the transparent native image.');
+    });
+
     evo_ui_test('modal option-list dnd primitive exposes reusable Blade contract', function (): void {
         $list = evo_ui_read('views/components/dnd-option-list.blade.php');
         $row = evo_ui_read('views/components/dnd-option-row.blade.php');
@@ -1500,6 +1622,41 @@ evo_ui_group('module-table', function (): void {
         evo_ui_assert_contains('draggable', $list, 'List rows must opt into native DnD.');
         evo_ui_assert_contains("\$this->provider()->rows(\$this->page, \$this->perPage)", $moduleTable, 'Table DnD mapper must resolve visible rows before calling the provider reorder hook.');
         evo_ui_assert_contains("\$this->reorderRow(\$id, \$targetId, \$placement)", $moduleTable, 'Table DnD mapper must reuse the provider reorderRow contract.');
+    });
+
+    evo_ui_test('module table table/list switch and reorder markers stay isolated', function (): void {
+        $moduleTable = evo_ui_read('views/components/table/module.blade.php');
+        $list = evo_ui_read('views/components/table/module/list.blade.php');
+        $toolbar = evo_ui_read('views/components/table/module/toolbar.blade.php');
+        $cell = evo_ui_read('views/components/table/module/cell.blade.php');
+
+        foreach ([
+            'wire:key="{{ $viewKey }}-toolbar-{{ $viewMode }}"' => 'Toolbar must be keyed by view mode so search and view buttons do not disappear after switching.',
+            'wire:key="{{ $viewKey }}-content-{{ $viewMode }}"' => 'Content root must be keyed by view mode so table/list branches replace cleanly.',
+            'wire:key="{{ $viewKey }}-table"' => 'Table branch must have a dedicated key.',
+            'wire:key="{{ $viewKey }}-list"' => 'List branch must have a dedicated key.',
+            "'data-evo-table-view' => \$viewMode" => 'Table surface must expose the active view mode.',
+            'data-evo-table-view-content="{{ $viewMode }}"' => 'Table content must expose the active view mode.',
+            "'data-evo-dnd-item-method' => 'sortTableRowByUid'" => 'Reorderable table and list views must use the same table row UID sort method.',
+            "'data-evo-dnd-list' => true" => 'Table body/list root must expose a shared DnD list marker.',
+            "'data-evo-dnd-item' => true" => 'Rows must expose shared DnD item markers.',
+            "'data-evo-dnd-uid' => (string) \$rowId" => 'Rows must expose stable DnD UIDs.',
+            "'data-evo-table-row' => (string) \$rowId" => 'Rows must expose table diagnostics markers.',
+            "'class' => 'evo-ui-table-row--dnd'" => 'Table rows must use the shared table DnD visual class.',
+        ] as $marker => $message) {
+            evo_ui_assert_contains($marker, $moduleTable . "\n" . $list, $message);
+        }
+
+        evo_ui_assert_contains("wire:click=\"switchView('table')\"", $toolbar, 'Toolbar must provide table view switching.');
+        evo_ui_assert_contains("wire:click=\"switchView('list')\"", $toolbar, 'Toolbar must provide list view switching.');
+        evo_ui_assert_contains('wire:model.live.debounce.300ms="{{ $searchState }}"', $toolbar, 'Toolbar search must stay bound after view switching.');
+        evo_ui_assert_contains('evo-ui-list-item--dnd', $list, 'List view rows must use the shared list DnD visual class.');
+        evo_ui_assert_contains("\$type === 'position'", $cell, 'Position cells must render the shared reorder rail.');
+        evo_ui_assert_contains('evo-ui-sr-only', $cell, 'Position values must be screen-reader-only so the visual UI does not show an extra numeric position field.');
+        evo_ui_assert_not_contains('data-evo-dnd-placeholder', $moduleTable, 'Module table Blade must not render a static placeholder row; runtime owns the placeholder.');
+        evo_ui_assert_not_contains('data-evo-dnd-placeholder', $list, 'Module list Blade must not render a static placeholder row; runtime owns the placeholder.');
+        evo_ui_assert_not_contains('evo-ui-dnd-placeholder', $moduleTable, 'Module table Blade must not render static placeholder CSS classes.');
+        evo_ui_assert_not_contains('evo-ui-dnd-placeholder', $list, 'Module list Blade must not render static placeholder CSS classes.');
     });
 });
 
@@ -1926,8 +2083,9 @@ evo_ui_group('forms', function (): void {
     });
 });
 
-if ($failed > 0) {
+if (evo_ui_exit_code($failed) !== 0) {
+    echo "FAIL {$failed} tests / {$assertions} assertions\n";
     exit(1);
 }
 
-echo "OK {$passed} tests\n";
+echo "OK {$passed} tests / {$assertions} assertions\n";

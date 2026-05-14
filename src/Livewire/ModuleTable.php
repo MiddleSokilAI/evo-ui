@@ -2,6 +2,7 @@
 
 namespace EvoUI\Livewire;
 
+use EvoUI\Contracts\ModuleTableProvider;
 use EvoUI\Support\RichTextEditor;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Validator;
@@ -11,6 +12,7 @@ use Livewire\Component;
 class ModuleTable extends Component
 {
     public string $preset = '';
+    /** @var array<string, mixed> */
     public array $context = [];
 
     #[Url(as: 'q', history: true, except: '')]
@@ -28,6 +30,7 @@ class ModuleTable extends Component
     #[Url(as: 'perPage', history: true, except: 0)]
     public int $perPage = 0;
 
+    /** @var array<string, mixed> */
     #[Url(as: 'f', history: true, except: [])]
     public array $filterState = [];
 
@@ -38,7 +41,9 @@ class ModuleTable extends Component
     public bool $modalOpen = false;
     public string $modalMode = 'create';
     public ?int $modalRecordId = null;
+    /** @var array<string, mixed> */
     public array $modalData = [];
+    /** @var array<string, mixed> */
     public array $modalEditorSelections = [];
     public bool $modalAliasTouched = false;
     public bool $deleteModalOpen = false;
@@ -46,6 +51,7 @@ class ModuleTable extends Component
     public string $deleteRecordName = '';
     public string $deleteErrorMessage = '';
 
+    /** @param array<string, mixed> $context */
     public function mount(string $preset, array $context = []): void
     {
         $this->preset = $preset;
@@ -239,7 +245,7 @@ class ModuleTable extends Component
             $result = $this->callProvider($method, $this->deleteRecordId);
 
             if ($result === false || (is_string($result) && trim($result) !== '')) {
-                $this->deleteErrorMessage = is_string($result) ? trim($result) : __('evo::global.delete_guard_message');
+                $this->deleteErrorMessage = is_string($result) ? trim($result) : (string) __('evo::global.delete_guard_message');
                 return;
             }
         }
@@ -554,6 +560,7 @@ class ModuleTable extends Component
         data_set($this->modalData, $field, $values);
     }
 
+    /** @param array<int, int|string> $values */
     public function applyMultiFilter(string $state, array $values): void
     {
         $filter = $this->filterByState($state);
@@ -724,8 +731,7 @@ class ModuleTable extends Component
         }
 
         $action = collect($this->rowActions())
-            ->first(fn ($action) => is_array($action)
-                && (string) ($action['key'] ?? '') === $actionKey
+            ->first(fn (array $action) => (string) ($action['key'] ?? '') === $actionKey
                 && (string) ($action['type'] ?? 'link') === 'wire');
 
         if (!is_array($action)) {
@@ -811,7 +817,7 @@ class ModuleTable extends Component
         }
 
         $column = collect($this->columns())
-            ->first(fn ($column) => is_array($column) && (string) ($column['key'] ?? '') === $field);
+            ->first(fn (array $column) => (string) ($column['key'] ?? '') === $field);
 
         if (!is_array($column)) {
             return;
@@ -948,6 +954,7 @@ class ModuleTable extends Component
         return 'evo-ui.module-table.' . sha1($this->preset . '|' . json_encode($context));
     }
 
+    /** @return array<string, mixed> */
     public function persistedState(): array
     {
         return [
@@ -973,7 +980,8 @@ class ModuleTable extends Component
 
         $filterGroups = $provider->filterGroups();
 
-        return view('evo::livewire.module-table', [
+        /** @var View $view */
+        $view = view('evo::livewire.module-table', [
             'controller' => $this,
             'config' => $this->visibleConfig(),
             'rows' => $provider->rows($this->page, $this->perPage),
@@ -991,12 +999,16 @@ class ModuleTable extends Component
             'direction' => $this->direction,
             'selectedId' => $this->selectedId,
         ]);
+
+        return $view;
     }
 
     public function modalTitle(): string
     {
-        if (($this->modalAction($this->modalMode)['modal']['title'] ?? null) !== null) {
-            return __((string) $this->modalAction($this->modalMode)['modal']['title']);
+        $modalAction = $this->modalAction($this->modalMode);
+
+        if (is_array($modalAction['modal'] ?? null) && ($modalAction['modal']['title'] ?? null) !== null) {
+            return (string) __((string) $modalAction['modal']['title']);
         }
 
         $provider = $this->provider();
@@ -1013,14 +1025,15 @@ class ModuleTable extends Component
             ? $this->modalConfig('title_edit', $this->modalConfig('title', 'evo::global.form'))
             : $this->modalConfig('title_create', $this->modalConfig('title', 'evo::global.form'));
 
-        return __((string) $key);
+        return (string) __((string) $key);
     }
 
     public function modalSubmitLabel(): string
     {
-        return __((string) $this->modalConfig('submit_label', 'evo::global.action_save'));
+        return (string) __((string) $this->modalConfig('submit_label', 'evo::global.action_save'));
     }
 
+    /** @return array<int, array<string, mixed>> */
     public function modalHeaderMeta(): array
     {
         $provider = $this->provider();
@@ -1035,6 +1048,7 @@ class ModuleTable extends Component
         return [];
     }
 
+    /** @return array<string, mixed> */
     public function modalOptions(): array
     {
         $config = $this->modalConfig();
@@ -1047,6 +1061,7 @@ class ModuleTable extends Component
         return $config;
     }
 
+    /** @return array<int, array<string, mixed>> */
     public function modalActions(): array
     {
         return collect((array) $this->modalConfig('actions', []))
@@ -1073,6 +1088,7 @@ class ModuleTable extends Component
             ->all();
     }
 
+    /** @return array<int, array<string, mixed>> */
     public function modalFields(): array
     {
         $fields = collect((array) $this->modalConfig('fields', []))
@@ -1089,6 +1105,7 @@ class ModuleTable extends Component
         return $fields;
     }
 
+    /** @param array<string, mixed> $field */
     public function modalEditorHtml(array $field, string $fieldId): string
     {
         $provider = $this->provider();
@@ -1115,6 +1132,10 @@ class ModuleTable extends Component
         );
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<int, array<string, mixed>>
+     */
     public function modalEditorOptions(array $field): array
     {
         if (($field['editor_switcher'] ?? true) === false) {
@@ -1143,6 +1164,7 @@ class ModuleTable extends Component
             ->all();
     }
 
+    /** @param array<string, mixed> $field */
     public function modalEditorValue(array $field, string $fieldId): string
     {
         $editors = $this->registeredRichTextEditors();
@@ -1178,11 +1200,16 @@ class ModuleTable extends Component
         $this->modalEditorSelections[$fieldId] = $editor;
     }
 
+    /** @return array<int, string> */
     public function registeredRichTextEditors(): array
     {
         return RichTextEditor::registered();
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<int, array<string, mixed>>
+     */
     public function modalFieldOptions(array $field): array
     {
         $provider = $this->provider();
@@ -1213,6 +1240,10 @@ class ModuleTable extends Component
             ->all();
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<int, array<string, mixed>>
+     */
     public function modalBuilderBlocks(array $field): array
     {
         $provider = $this->provider();
@@ -1262,6 +1293,7 @@ class ModuleTable extends Component
         return '/' . ltrim($path, '/');
     }
 
+    /** @param array<string, mixed> $filter */
     public function filterValue(array $filter): mixed
     {
         $state = $filter['state'] ?? '';
@@ -1277,15 +1309,17 @@ class ModuleTable extends Component
         return $this->filterState[$state] ?? ($filter['default'] ?? null);
     }
 
+    /** @param array<string, mixed> $action */
     public function tableActionLabel(array $action): string
     {
         if (($method = $action['label_provider'] ?? null) && method_exists($this->provider(), $method)) {
             return (string) $this->provider()->{$method}($action);
         }
 
-        return __($action['label'] ?? '');
+        return (string) __($action['label'] ?? '');
     }
 
+    /** @param array<string, mixed> $action */
     public function tableActionHref(array $action, ?int $selectedId = null): ?string
     {
         if (($method = $action['href_provider'] ?? null) && method_exists($this->provider(), $method)) {
@@ -1295,6 +1329,10 @@ class ModuleTable extends Component
         return $action['href'] ?? null;
     }
 
+    /**
+     * @param array<string, mixed> $action
+     * @return array<string, mixed>
+     */
     public function tableActionAttributes(array $action, ?int $selectedId = null): array
     {
         if (($method = $action['attributes_provider'] ?? null) && method_exists($this->provider(), $method)) {
@@ -1304,6 +1342,10 @@ class ModuleTable extends Component
         return (array) ($action['attributes'] ?? []);
     }
 
+    /**
+     * @param array<string, mixed> $row
+     * @param array<string, mixed> $column
+     */
     public function cellDisplay(array $row, array $column): string
     {
         $key = $column['key'] ?? '';
@@ -1354,6 +1396,7 @@ class ModuleTable extends Component
         return (string) ($value ?? '');
     }
 
+    /** @param array<string, mixed> $row */
     public function rowStateClasses(array $row): string
     {
         return collect((array) $this->tableConfig('row_states', []))
@@ -1382,6 +1425,7 @@ class ModuleTable extends Component
             ->implode(' ');
     }
 
+    /** @return array<int, array<string, mixed>> */
     public function sortableColumns(): array
     {
         return collect($this->columns())
@@ -1395,6 +1439,7 @@ class ModuleTable extends Component
         return (bool) $this->tableConfig('reorder.enabled', false);
     }
 
+    /** @return ModuleTableProvider */
     protected function provider(): object
     {
         $class = $this->tableConfig('provider');
@@ -1418,6 +1463,7 @@ class ModuleTable extends Component
         return $provider->{$method}(...array_slice($arguments, 0, $reflection->getNumberOfParameters()));
     }
 
+    /** @return array<string, mixed> */
     protected function state(): array
     {
         return [
@@ -1448,6 +1494,7 @@ class ModuleTable extends Component
         return $key ? data_get($config, $key, $default) : $config;
     }
 
+    /** @return array<string, mixed>|null */
     protected function modalAction(string $key): ?array
     {
         if ($key === '' || in_array($key, ['create', 'edit'], true)) {
@@ -1465,6 +1512,7 @@ class ModuleTable extends Component
         return is_array($action) ? $action : null;
     }
 
+    /** @return array<string, mixed> */
     protected function modalRules(): array
     {
         $rules = [];
@@ -1524,6 +1572,7 @@ class ModuleTable extends Component
         return $rules;
     }
 
+    /** @return array<string, string> */
     protected function modalValidationAttributes(): array
     {
         $attributes = [];
@@ -1574,18 +1623,21 @@ class ModuleTable extends Component
         return $attributes;
     }
 
+    /** @return array<string, mixed> */
     protected function modalRepeaterField(string $field): array
     {
         return collect($this->modalFields())
             ->first(fn ($item) => ($item['type'] ?? null) === 'repeater' && (string) ($item['name'] ?? '') === $field) ?? [];
     }
 
+    /** @return array<string, mixed> */
     protected function modalBuilderField(string $field): array
     {
         return collect($this->modalFields())
             ->first(fn ($item) => ($item['type'] ?? null) === 'builder' && (string) ($item['name'] ?? '') === $field) ?? [];
     }
 
+    /** @return array<string, mixed> */
     protected function modalBuilderNestedField(string $field, int $blockIndex, string $itemField): array
     {
         $config = $this->modalBuilderField($field);
@@ -1605,6 +1657,10 @@ class ModuleTable extends Component
             ->first(fn ($item) => ($item['type'] ?? null) === 'items' && (string) ($item['name'] ?? '') === $itemField) ?? [];
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<string, mixed>
+     */
     protected function modalBuilderNestedDefaults(array $field): array
     {
         if (!empty($field['defaults']) && is_array($field['defaults'])) {
@@ -1617,6 +1673,7 @@ class ModuleTable extends Component
             ->all();
     }
 
+    /** @return array<string, mixed> */
     protected function providerModalDefaults(): array
     {
         $provider = $this->provider();
@@ -1631,6 +1688,7 @@ class ModuleTable extends Component
             ->all();
     }
 
+    /** @return array<string, mixed> */
     protected function providerModalData(int $id): array
     {
         $provider = $this->provider();
@@ -1709,6 +1767,7 @@ class ModuleTable extends Component
         return $key ? data_get($config, $key, $default) : $config;
     }
 
+    /** @return array<string, mixed> */
     protected function visibleConfig(): array
     {
         $config = $this->tableConfig();
@@ -1719,6 +1778,7 @@ class ModuleTable extends Component
         return $config;
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function columns(): array
     {
         $columns = collect($this->tableConfig('columns', []))
@@ -1734,6 +1794,7 @@ class ModuleTable extends Component
         return $columns;
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function filters(): array
     {
         $filters = collect($this->tableConfig('filters', []))->values()->all();
@@ -1746,6 +1807,7 @@ class ModuleTable extends Component
         return $filters;
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function rowActions(): array
     {
         $actions = collect($this->tableConfig('row_actions', []))
@@ -1761,6 +1823,7 @@ class ModuleTable extends Component
         return $actions;
     }
 
+    /** @return array<string, mixed> */
     protected function filterByState(string $state): array
     {
         return collect($this->filters())->firstWhere('state', $state) ?? [];
@@ -1790,6 +1853,10 @@ class ModuleTable extends Component
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
     }
 
+    /**
+     * @param array<string, mixed> $stored
+     * @return array<string, mixed>
+     */
     protected function sanitizeStoredFilters(array $stored): array
     {
         $filters = [];
@@ -1858,6 +1925,7 @@ class ModuleTable extends Component
         session()->put($this->storageKey(), $this->persistedState());
     }
 
+    /** @param array<string, mixed> $state */
     protected function restoreTableState(array $state): void
     {
         $this->syncConfigState();
@@ -1912,7 +1980,11 @@ class ModuleTable extends Component
     {
         $keys = ['q', 'page', 'sort', 'dir', 'perPage', 'f', 'view'];
 
-        return collect($keys)->contains(fn ($key) => request()->query->has($key));
+        $request = request();
+
+        return is_object($request)
+            && property_exists($request, 'query')
+            && collect($keys)->contains(fn ($key) => $request->query->has($key));
     }
 
     protected function useReorderSort(): void
@@ -1962,6 +2034,7 @@ class ModuleTable extends Component
         }
     }
 
+    /** @return array<int, int> */
     protected function perPageOptions(): array
     {
         return collect((array) $this->tableConfig('per_page_options', [10, 20, 30, 50, 100]))
@@ -1972,11 +2045,13 @@ class ModuleTable extends Component
             ->all() ?: [10, 20, 30, 50, 100];
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function optionsFor(string $state): array
     {
         return $this->filterOptions($this->provider()->filterGroups())[$state] ?? [];
     }
 
+    /** @return array<int, string> */
     protected function tableViews(): array
     {
         return collect((array) $this->tableConfig('views', ['table']))
@@ -1987,6 +2062,7 @@ class ModuleTable extends Component
             ->all() ?: ['table'];
     }
 
+    /** @return array<string, mixed>|null */
     protected function sortableColumn(string $key): ?array
     {
         if ($key === '') {
@@ -1999,6 +2075,7 @@ class ModuleTable extends Component
         return is_array($column) ? $column : null;
     }
 
+    /** @return array<string, mixed>|null */
     protected function inlineEditableColumn(string $field): ?array
     {
         $field = trim($field);
@@ -2008,8 +2085,8 @@ class ModuleTable extends Component
         }
 
         $column = collect($this->columns())
-            ->first(function ($column) use ($field) {
-                if (!is_array($column) || empty($column['editable'])) {
+            ->first(function (array $column) use ($field) {
+                if (empty($column['editable'])) {
                     return false;
                 }
 
@@ -2019,6 +2096,10 @@ class ModuleTable extends Component
         return is_array($column) ? $column : null;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $filterGroups
+     * @return array<string, array<int, array<string, mixed>>>
+     */
     protected function filterOptions(array $filterGroups): array
     {
         return collect($filterGroups)
@@ -2040,6 +2121,10 @@ class ModuleTable extends Component
             ->all();
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $filterGroups
+     * @return array<string, array<int, mixed>>
+     */
     protected function filterLabels(array $filterGroups): array
     {
         return collect($filterGroups)
@@ -2072,6 +2157,7 @@ class ModuleTable extends Component
         return max(1, (int) ceil($this->provider()->total() / max(1, $this->perPage)));
     }
 
+    /** @return array<int, int|string> */
     protected function paginationItems(int $lastPage): array
     {
         if ($lastPage <= 7) {

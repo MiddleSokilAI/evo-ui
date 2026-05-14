@@ -3,9 +3,11 @@
 namespace EvoUI\Livewire\Foundation\Http;
 
 use Illuminate\Contracts\Http\Kernel as KernelContract;
+use Symfony\Component\HttpFoundation\Response;
 
 class Kernel implements KernelContract
 {
+    /** @var list<string> */
     protected array $middleware = [];
 
     public function bootstrap(): void
@@ -14,7 +16,7 @@ class Kernel implements KernelContract
 
     public function handle($request)
     {
-        return $request;
+        return new Response();
     }
 
     public function terminate($request, $response): void

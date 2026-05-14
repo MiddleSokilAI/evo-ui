@@ -6,6 +6,7 @@ use EvoUI\EvoUI;
 use EvoUI\Support\Permissions;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -31,6 +32,7 @@ class Table extends Component
     #[Url(as: 'dir', history: true, except: 'asc')]
     public string $direction = 'asc';
 
+    /** @var array<string, mixed> */
     #[Url(as: 'f', history: true, except: [])]
     public array $filterState = [];
 
@@ -39,6 +41,7 @@ class Table extends Component
 
     #[Url(as: 'perPage', history: true, except: 0)]
     public int $perPage = 0;
+    /** @var list<int> */
     public array $selected = [];
 
     public function mount(string $preset = 'site_content'): void
@@ -85,6 +88,7 @@ class Table extends Component
         $this->dispatchTableEvent('filter.changed', ['state' => $state]);
     }
 
+    /** @param list<int|string> $values */
     public function applyMultiFilter(string $state, array $values): void
     {
         $filter = $this->filterByState($state);
@@ -191,7 +195,8 @@ class Table extends Component
             $this->page = $lastPage;
         }
 
-        return view('evo::livewire.table', [
+        /** @var View $view */
+        $view = view('evo::livewire.table', [
             'controller' => $this,
             'config' => $this->visibleConfig(),
             'preset' => $this->preset,
@@ -211,8 +216,11 @@ class Table extends Component
             'paginationItems' => $this->paginationItems($lastPage),
             'managerUrl' => rtrim(EVO_MANAGER_URL, '/') . '/',
         ]);
+
+        return $view;
     }
 
+    /** @param array<string, mixed> $filter */
     public function filterValue(array $filter): mixed
     {
         $state = $filter['state'];
@@ -220,7 +228,8 @@ class Table extends Component
         return $this->filterState[$state] ?? ($filter['default'] ?? null);
     }
 
-    public function actionHref(array $action, ?object $row = null, ?int $selectedId = null): ?string
+    /** @param array<string, mixed> $action */
+    public function actionHref(array $action, ?Model $row = null, ?int $selectedId = null): ?string
     {
         if (!$this->allowed($action)) {
             return null;
@@ -238,7 +247,8 @@ class Table extends Component
         return rtrim(EVO_MANAGER_URL, '/') . '/' . ltrim($url, '/');
     }
 
-    public function cellValue(object $row, array $column): mixed
+    /** @param array<string, mixed> $column */
+    public function cellValue(Model $row, array $column): mixed
     {
         if ($relation = ($column['relation'] ?? null)) {
             $related = $row->getRelationValue($relation);
@@ -250,7 +260,8 @@ class Table extends Component
         return $row->getAttribute($column['field'] ?? $column['key']);
     }
 
-    public function cellDisplay(object $row, array $column): string
+    /** @param array<string, mixed> $column */
+    public function cellDisplay(Model $row, array $column): string
     {
         $value = $this->cellValue($row, $column);
 
@@ -261,13 +272,15 @@ class Table extends Component
         return (string) ($value ?? '');
     }
 
+    /** @param array<string, mixed> $column */
     public function customCellView(array $column): ?string
     {
         $view = app(EvoUI::class)->tableCellView($column);
 
-        return $view && view()->exists($view) ? $view : null;
+        return $view && app('view')->exists($view) ? $view : null;
     }
 
+    /** @return array<int, array<string, mixed>> */
     public function sortableColumns(): array
     {
         return collect($this->tableConfig('columns', []))
@@ -278,6 +291,7 @@ class Table extends Component
             ->all();
     }
 
+    /** @return Builder<Model> */
     protected function query(): Builder
     {
         $model = $this->tableConfig('model');
@@ -316,6 +330,10 @@ class Table extends Component
         return $query;
     }
 
+    /**
+     * @param Builder<Model> $query
+     * @return Builder<Model>
+     */
     protected function orderedQuery(Builder $query): Builder
     {
         $sortColumn = $this->sortableColumn($this->sort);
@@ -335,6 +353,10 @@ class Table extends Component
         return $query;
     }
 
+    /**
+     * @param Builder<Model> $query
+     * @param array<string, mixed> $filter
+     */
     protected function applyFilter(Builder $query, array $filter): void
     {
         $state = $filter['state'] ?? null;
@@ -393,6 +415,10 @@ class Table extends Component
         }
     }
 
+    /**
+     * @param Builder<Model> $query
+     * @param list<mixed>|array<string, mixed> $where
+     */
     protected function applyWhere(Builder $query, array $where): void
     {
         if (Arr::isAssoc($where) || !is_array($where[0] ?? null)) {
@@ -405,6 +431,7 @@ class Table extends Component
         }
     }
 
+    /** @return array<string, array<int, array{id: mixed, name: mixed}>> */
     protected function filterOptions(): array
     {
         return collect($this->filters())
@@ -413,6 +440,7 @@ class Table extends Component
             ->all();
     }
 
+    /** @return array<string, array<int, mixed>> */
     protected function filterLabels(): array
     {
         return collect($this->filters())
@@ -432,6 +460,10 @@ class Table extends Component
             ->all();
     }
 
+    /**
+     * @param array<string, mixed> $filter
+     * @return array<int, array{id: mixed, name: mixed}>
+     */
     protected function optionsFor(array $filter): array
     {
         if (!empty($filter['options'])) {
@@ -465,11 +497,13 @@ class Table extends Component
             ->all();
     }
 
+    /** @return array<string, mixed> */
     protected function filterByState(string $state): array
     {
         return collect($this->filters())->firstWhere('state', $state) ?? [];
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function filters(): array
     {
         return collect($this->tableConfig('filters', []))
@@ -479,6 +513,7 @@ class Table extends Component
             ->all();
     }
 
+    /** @return array<string, mixed> */
     protected function visibleConfig(): array
     {
         $config = $this->tableConfig();
@@ -500,6 +535,7 @@ class Table extends Component
         return $config;
     }
 
+    /** @param array<string, mixed> $definition */
     protected function allowed(array $definition): bool
     {
         return app(Permissions::class)->allows($definition);
@@ -524,6 +560,7 @@ class Table extends Component
         $this->page = 1;
     }
 
+    /** @param array<string, mixed> $detail */
     protected function dispatchTableEvent(string $event, array $detail = []): void
     {
         $this->dispatch('evo-ui:table.' . $event, ...['preset' => $this->preset, ...$detail]);
@@ -539,6 +576,7 @@ class Table extends Component
         $this->switchView($this->viewMode ?: (string) $this->tableConfig('default_view', 'table'));
     }
 
+    /** @return array<int, int> */
     protected function perPageOptions(): array
     {
         $options = (array) $this->tableConfig('per_page_options', [5, 10, 20, 50, 100]);
@@ -553,6 +591,7 @@ class Table extends Component
             ->all() ?: [5, 10, 20, 50, 100];
     }
 
+    /** @return array<int, string> */
     protected function tableViews(): array
     {
         $views = (array) $this->tableConfig('views', ['table']);
@@ -580,6 +619,7 @@ class Table extends Component
         }
     }
 
+    /** @return array<string, mixed>|null */
     protected function sortableColumn(string $key): ?array
     {
         if ($key === '') {
@@ -599,12 +639,16 @@ class Table extends Component
 
     protected function dateStartTimestamp(string $date): ?int
     {
-        return $this->normalizeDate($date) ? strtotime($date . ' 00:00:00') : null;
+        $timestamp = $this->normalizeDate($date) ? strtotime($date . ' 00:00:00') : false;
+
+        return $timestamp === false ? null : $timestamp;
     }
 
     protected function dateEndTimestamp(string $date): ?int
     {
-        return $this->normalizeDate($date) ? strtotime($date . ' 23:59:59') : null;
+        $timestamp = $this->normalizeDate($date) ? strtotime($date . ' 23:59:59') : false;
+
+        return $timestamp === false ? null : $timestamp;
     }
 
     protected function formatTimestamp(mixed $value, string $format): string
@@ -619,13 +663,14 @@ class Table extends Component
         return max(1, (int) ceil($this->query()->count() / $this->perPage));
     }
 
+    /** @return array<int, int|string> */
     protected function paginationItems(int $lastPage): array
     {
         if ($lastPage <= 9) {
             return range(1, $lastPage);
         }
 
-        $pages = collect([1, 2, $lastPage - 1, $lastPage]);
+        $pages = collect([1, 2, max(1, $lastPage - 1), $lastPage]);
 
         foreach (range($this->page - 1, $this->page + 1) as $page) {
             if ($page > 0 && $page <= $lastPage) {

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Schema;
 
 class LanguageBridge
 {
+    /** @param array<string, mixed> $config */
     public function enabled(array $config = []): bool
     {
         $mode = data_get($config, 'multilingual.enabled', config('evo-ui.multilingual.enabled', 'auto'));
@@ -22,6 +23,7 @@ class LanguageBridge
         return $this->hasSLangTables();
     }
 
+    /** @param array<string, mixed> $config */
     public function canStoreTranslations(array $config = []): bool
     {
         return $this->enabled($config) && $this->hasSLangTables();
@@ -41,6 +43,10 @@ class LanguageBridge
             ?: 'uk';
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @return array<int, string>
+     */
     public function locales(array $config = []): array
     {
         $configured = data_get($config, 'multilingual.locales', config('evo-ui.multilingual.locales', []));
@@ -68,6 +74,10 @@ class LanguageBridge
         return $this->locale($locale) === $this->defaultLocale();
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @return array<int, string>
+     */
     public function resourceFields(array $config): array
     {
         $fields = data_get($config, 'multilingual.fields', config('evo-ui.multilingual.resource_fields', []));
@@ -79,11 +89,19 @@ class LanguageBridge
         return ['pagetitle', 'longtitle', 'description', 'introtext', 'content', 'menutitle', 'seotitle', 'seodescription'];
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $field
+     */
     public function isResourceField(array $config, array $field): bool
     {
         return in_array((string) ($field['name'] ?? ''), $this->resourceFields($config), true);
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $field
+     */
     public function isTemplateVariable(array $config, array $field): bool
     {
         $id = (int) data_get($field, 'storage.id');
@@ -91,6 +109,7 @@ class LanguageBridge
         return $id > 0 && in_array($id, $this->templateVariableIds($config), true);
     }
 
+    /** @return array<string, mixed> */
     public function resourceValues(int $resourceId, ?string $locale): array
     {
         if ($resourceId <= 0 || $this->isDefault($locale) || !$this->hasSLangTables()) {
@@ -105,6 +124,7 @@ class LanguageBridge
         return $row ? (array) $row : [];
     }
 
+    /** @param array<string, mixed> $values */
     public function saveResourceValues(int $resourceId, ?string $locale, array $values): void
     {
         if ($resourceId <= 0 || $values === [] || $this->isDefault($locale) || !$this->hasSLangTables()) {
@@ -144,6 +164,10 @@ class LanguageBridge
         );
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @return array<int, int>
+     */
     public function templateVariableIds(array $config = []): array
     {
         $configured = data_get($config, 'multilingual.tvs', config('evo-ui.multilingual.tvs', []));
@@ -171,11 +195,13 @@ class LanguageBridge
         return function_exists('evo') ? evo()->getConfig($key, $default) : $default;
     }
 
+    /** @return array<int, string> */
     protected function csvConfig(string $key): array
     {
         return $this->csv((string) $this->evoConfig($key, ''));
     }
 
+    /** @return array<int, string> */
     protected function csv(string $value): array
     {
         return collect(explode(',', $value))

@@ -26,6 +26,9 @@ return [
                 ],
             ],
             'sLang' => [
+                'src/sLang.php' => [
+                    'cdn-asset' => 'Google Translate API endpoint used by translation logic, not a manager UI asset loaded by evo-ui screens.',
+                ],
                 'src/Controllers/sLangController.php' => [
                     'inline-script' => 'Evolution resource TV TabPane bridge documented in sLang resource-bridge docs.',
                 ],
@@ -77,6 +80,9 @@ return [
         ],
     ],
     'sLang' => [
+        'src/sLang.php' => [
+            'cdn-asset' => 'Google Translate API endpoint used by translation logic, not a manager UI asset loaded by evo-ui screens.',
+        ],
         'src/Controllers/sLangController.php' => [
             'inline-script' => 'Evolution resource TV TabPane bridge documented in sLang resource-bridge docs.',
         ],
@@ -104,6 +110,50 @@ return [
         ],
         'views/livewire/settings-panel.blade.php' => [
             'local-evo-ui-style' => 'Accepted first-release dirty-field modal exclusion after visual QA; move to shared EvoUI form helper in follow-up cleanup.',
+        ],
+    ],
+    'sArticles' => [
+        'builder/accordion/config.php' => [
+            'inline-script' => 'Public builder block editor script; not an evo-ui manager primitive consumer.',
+        ],
+        'builder/file/template.blade.php' => [
+            'inline-script' => 'Public builder block template script; not an evo-ui manager primitive consumer.',
+        ],
+        'builder/imgandtext/template.blade.php' => [
+            'inline-script' => 'Public builder block template script; not an evo-ui manager primitive consumer.',
+        ],
+        'builder/poll/render.blade.php' => [
+            'inline-script' => 'Public article render output; not an evo-ui manager primitive consumer.',
+        ],
+        'builder/quote/template.blade.php' => [
+            'inline-script' => 'Public builder block template script; not an evo-ui manager primitive consumer.',
+        ],
+        'builder/singleimg/template.blade.php' => [
+            'inline-script' => 'Public builder block template script; not an evo-ui manager primitive consumer.',
+        ],
+        'builder/slider/config.php' => [
+            'inline-script' => 'Public builder block editor script; not an evo-ui manager primitive consumer.',
+        ],
+        'builder/slider/template.blade.php' => [
+            'inline-script' => 'Public builder block template script; not an evo-ui manager primitive consumer.',
+        ],
+    ],
+    'dIssues' => [
+        'views/client/index.blade.php' => [
+            'inline-style' => 'Public client issue portal styling; outside evo-ui manager shell.',
+        ],
+        'views/client/show.blade.php' => [
+            'inline-style' => 'Public client issue portal styling; outside evo-ui manager shell.',
+        ],
+    ],
+    'dDocs' => [
+        'views/docs/shell.blade.php' => [
+            'inline-script' => 'dDocs documentation shell adapter; tracked as a dDocs primitive before promotion to evo-ui.',
+        ],
+        'views/livewire/module-panel.blade.php' => [
+            'inline-style' => 'dDocs documentation panel layout adapter; tracked as dDocs-specific shell work.',
+            'inline-script' => 'dDocs documentation panel behavior adapter; tracked as dDocs-specific shell work.',
+            'local-evo-ui-style' => 'dDocs currently owns its doc-tree panel skin; promotion to evo-ui is a separate primitive task.',
         ],
     ],
 ];

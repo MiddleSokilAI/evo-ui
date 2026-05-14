@@ -127,14 +127,19 @@
             <div class="evo-ui-form-toolbar" aria-label="@lang('evo::global.form_actions')">
                 @foreach($actions as $action)
                     @if(($action['type'] ?? null) === 'save')
+                        @php
+                            $savedLabel = __('evo::global.form_saved');
+                            $saveLabel = __($action['label'] ?? 'evo::global.action_save');
+                            $savedTitleExpression = 'savedFeedback ? ' . \Illuminate\Support\Js::from($savedLabel) . ' : ' . \Illuminate\Support\Js::from($saveLabel);
+                        @endphp
                         <x-evo::button
                             :tone="$action['tone'] ?? 'primary'"
                             :variant="$action['variant'] ?? 'filled'"
                             :icon-only="(bool) ($action['icon_only'] ?? false)"
                             type="submit"
                             form="evo-ui-form-{{ $config['key'] ?? 'default' }}"
-                            x-bind:title="savedFeedback ? @js(__('evo::global.form_saved')) : @js(__($action['label'] ?? 'evo::global.action_save'))"
-                            x-bind:aria-label="savedFeedback ? @js(__('evo::global.form_saved')) : @js(__($action['label'] ?? 'evo::global.action_save'))"
+                            :x-bind:title="$savedTitleExpression"
+                            :x-bind:aria-label="$savedTitleExpression"
                             x-bind:disabled="!dirty || savedFeedback"
                             x-bind:class="{ 'is-disabled': !dirty || savedFeedback, 'is-saved': savedFeedback }"
                             wire:loading.attr="disabled"

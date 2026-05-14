@@ -3,6 +3,7 @@
 namespace EvoUI\Support;
 
 use Closure;
+use Illuminate\Database\Eloquent\Model;
 
 class ResourceFormService
 {
@@ -12,16 +13,30 @@ class ResourceFormService
     ) {
     }
 
-    public function modelInstance(array $config, int $recordId = 0): object
+    /**
+     * @param array<string, mixed> $config
+     */
+    public function modelInstance(array $config, int $recordId = 0): Model
     {
         $model = (string) data_get($config, 'source.model');
         $key = $this->sourceKey($config);
         $id = $recordId ?: (int) data_get($config, 'source.default', 0);
         $record = $id > 0 ? $model::query()->where($key, $id)->first() : null;
 
-        return $record ?: new $model();
+        $instance = $record ?: new $model();
+
+        if (!$instance instanceof Model) {
+            throw new \RuntimeException("Configured resource form model [{$model}] must extend Eloquent Model.");
+        }
+
+        return $instance;
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<int, array<string, mixed>> $fields
+     * @return array<string, mixed>
+     */
     public function fill(array $config, array $fields, int $recordId, ?string $locale, Closure $displayValue): array
     {
         $data = [];
@@ -39,6 +54,11 @@ class ResourceFormService
         return $data;
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<int, array<string, mixed>> $fields
+     * @param array<string, mixed> $data
+     */
     public function save(array $config, array $fields, array $data, int $recordId, ?string $locale, Closure $storageValue): int
     {
         $model = $this->modelInstance($config, $recordId);
@@ -87,25 +107,35 @@ class ResourceFormService
         return $resourceId;
     }
 
+    /** @param array<string, mixed> $config */
     public function sourceKey(array $config): string
     {
         return (string) data_get($config, 'source.key', 'id');
     }
 
-    protected function fieldValue(array $config, object $model, array $field, array $translations, ?string $locale): mixed
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $translations
+     */
+    protected function fieldValue(array $config, Model $model, array $field, array $translations, ?string $locale): mixed
     {
         if ($this->isTvField($field)) {
             return $this->tvFieldValue($config, $model, $field, $locale);
         }
 
         if ($this->storesTranslatedResourceField($config, $field, $locale)) {
-            return $translations[$field['name']] ?? $model?->getAttribute($field['name']) ?? ($field['default'] ?? null);
+            return $translations[$field['name']] ?? $model->getAttribute($field['name']) ?? ($field['default'] ?? null);
         }
 
-        return $model?->getAttribute($field['name']) ?? ($field['default'] ?? null);
+        return $model->getAttribute($field['name']) ?? ($field['default'] ?? null);
     }
 
-    protected function tvFieldValue(array $config, object $model, array $field, ?string $locale): mixed
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $field
+     */
+    protected function tvFieldValue(array $config, Model $model, array $field, ?string $locale): mixed
     {
         $resourceId = (int) $model->getAttribute($this->sourceKey($config));
         $tvId = $this->tvId($field);
@@ -118,6 +148,10 @@ class ResourceFormService
         return $this->tvs->value($resourceId, $tvId, $default);
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $field
+     */
     protected function storesTranslatedResourceField(array $config, array $field, ?string $locale): bool
     {
         return $this->languages->canStoreTranslations($config)
@@ -125,6 +159,10 @@ class ResourceFormService
             && $this->languages->isResourceField($config, $field);
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $field
+     */
     protected function storesTranslatedTv(array $config, array $field, ?string $locale): bool
     {
         return $this->languages->canStoreTranslations($config)
@@ -132,11 +170,13 @@ class ResourceFormService
             && $this->languages->isTemplateVariable($config, $field);
     }
 
+    /** @param array<string, mixed> $field */
     protected function isTvField(array $field): bool
     {
         return data_get($field, 'storage.type') === 'tv';
     }
 
+    /** @param array<string, mixed> $field */
     protected function tvId(array $field): int
     {
         return (int) data_get($field, 'storage.id');

@@ -11,6 +11,11 @@ class ConfigFormService
     ) {
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<int, array<string, mixed>> $fields
+     * @return array<string, mixed>
+     */
     public function fill(array $config, array $fields): array
     {
         $data = [];
@@ -27,6 +32,11 @@ class ConfigFormService
         return $data;
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<int, array<string, mixed>> $fields
+     * @param array<string, mixed> $data
+     */
     public function save(array $config, array $fields, array $data, Closure $storageValue): void
     {
         $source = $this->source($config);
@@ -49,6 +59,10 @@ class ConfigFormService
         }
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>
+     */
     protected function source(array $config): array
     {
         return (array) data_get($config, 'source', []);

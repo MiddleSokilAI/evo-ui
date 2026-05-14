@@ -50,6 +50,7 @@ $rules = [
     ],
 ];
 
+/** @return array<string, string> */
 function drift_files(string $path): array
 {
     if (!is_dir($path)) {
@@ -83,6 +84,7 @@ function drift_files(string $path): array
     return $files;
 }
 
+/** @param array<int, string> $extensions */
 function drift_matches_extension(string $file, array $extensions): bool
 {
     foreach ($extensions as $extension) {
@@ -94,6 +96,7 @@ function drift_matches_extension(string $file, array $extensions): bool
     return false;
 }
 
+/** @param array<string, array<string, array<int|string, string>>> $allowlist */
 function drift_allowance(array $allowlist, string $consumer, string $file, string $rule): ?string
 {
     $rules = $allowlist[$consumer][$file] ?? [];

@@ -6,12 +6,12 @@ class LivewireAssetShim
 {
     protected ?string $cspNonce = null;
 
-    public function useScriptTagAttributes($attributes): static
+    public function useScriptTagAttributes(mixed $attributes): static
     {
         return $this;
     }
 
-    public function useStyleTagAttributes($attributes): static
+    public function useStyleTagAttributes(mixed $attributes): static
     {
         return $this;
     }

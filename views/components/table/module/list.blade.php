@@ -5,7 +5,14 @@
     'selectedId' => null,
 ])
 
-@php
+<?php
+    if (!($controller ?? null) instanceof \EvoUI\Livewire\ModuleTable) {
+        throw new \RuntimeException('The module list component requires an EvoUI module table controller.');
+    }
+
+    $config = is_array($config ?? null) ? $config : [];
+    $rows = is_array($rows ?? null) ? $rows : [];
+    $selectedId = $selectedId ?? null;
     $columns = collect($config['columns'] ?? [])->keyBy('key');
     $list = $config['list'] ?? [];
     $titleKey = $list['title'] ?? 'title';
@@ -25,7 +32,7 @@
         ->all();
     $opensModal = !empty($config['modal']['enabled']) && (($config['modal']['row_dblclick'] ?? true) !== false);
     $modalDblclickAction = trim((string) data_get($config, 'modal.row_dblclick_action', ''));
-    $reorderEnabled = method_exists($controller, 'reorderEnabled') && $controller->reorderEnabled();
+    $reorderEnabled = $controller->reorderEnabled();
     $listAttributes = new \Illuminate\View\ComponentAttributeBag([
         'class' => 'evo-ui-list',
     ]);
@@ -41,7 +48,7 @@
 
         return $value;
     };
-@endphp
+?>
 
 <div {{ $listAttributes }}>
     <?php if (count($rows)): ?>

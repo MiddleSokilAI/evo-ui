@@ -4,7 +4,9 @@
     'reorderEnabled' => false,
 ])
 
-@php
+<?php
+    $row = is_array($row ?? null) ? $row : [];
+    $column = is_array($column ?? null) ? $column : [];
     $key = $column['key'] ?? '';
     $type = $column['type'] ?? 'text';
     $value = data_get($row, $column['value'] ?? $key);
@@ -27,7 +29,7 @@
 
         return is_scalar($displayValue) || $displayValue === null ? (string) $displayValue : '';
     };
-@endphp
+?>
 
 <td class="{{ $cellClass }}">
     <?php if (!empty($column['editable']) && $type === 'image'): ?>

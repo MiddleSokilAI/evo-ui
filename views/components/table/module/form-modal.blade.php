@@ -3,14 +3,19 @@
     'config',
 ])
 
-@php
-    $modal = method_exists($controller, 'modalOptions') ? $controller->modalOptions() : (array) ($config['modal'] ?? []);
+<?php
+    if (!($controller ?? null) instanceof \EvoUI\Livewire\ModuleTable) {
+        throw new \RuntimeException('The module form modal component requires an EvoUI module table controller.');
+    }
+
+    $config = is_array($config ?? null) ? $config : [];
+    $modal = $controller->modalOptions();
     $fields = $controller->modalFields();
     $modalSize = $modal['size'] ?? 'md';
     $modalIcon = $modal['icon'] ?? 'edit';
     $modalLayout = (string) ($modal['layout'] ?? '');
     $modalNoticesPosition = (string) ($modal['notices_position'] ?? 'before_fields');
-    $modalHeaderMeta = method_exists($controller, 'modalHeaderMeta') ? $controller->modalHeaderMeta() : [];
+    $modalHeaderMeta = $controller->modalHeaderMeta();
     $cancelLabel = __((string) ($modal['cancel_label'] ?? 'evo::global.action_cancel'));
     $modalActions = $controller->modalActions();
     $showSubmit = (($modal['submit'] ?? true) !== false) && (($modal['readonly'] ?? false) !== true);
@@ -21,7 +26,7 @@
         ->filter(fn ($tab) => is_array($tab) && !empty($tab['name']))
         ->values();
     $defaultModalTab = (string) ($modalTabs->first()['name'] ?? '');
-@endphp
+?>
 
 <x-evo::modal
     :open="$controller->modalOpen"

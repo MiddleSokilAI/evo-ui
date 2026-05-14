@@ -6,6 +6,10 @@ use RuntimeException;
 
 class PhpConfigFile
 {
+    /**
+     * @param array<string, mixed> $fallback
+     * @return array<string, mixed>
+     */
     public function load(string $relativePath, array $fallback = []): array
     {
         $path = $this->path($relativePath);
@@ -19,6 +23,7 @@ class PhpConfigFile
         return is_array($config) ? $config : $fallback;
     }
 
+    /** @param array<string, mixed> $config */
     public function write(string $relativePath, array $config): void
     {
         $path = $this->path($relativePath);
@@ -48,6 +53,6 @@ class PhpConfigFile
     {
         $permissions = function_exists('evo') ? evo()->getConfig('new_folder_permissions', '0777') : '0777';
 
-        return octdec((string) $permissions);
+        return (int) octdec((string) $permissions);
     }
 }

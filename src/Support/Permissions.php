@@ -8,6 +8,7 @@ class Permissions
     {
     }
 
+    /** @param array<string, mixed> $definition */
     public function allows(array $definition): bool
     {
         if (!$this->matchesRoles($definition)) {
@@ -30,6 +31,7 @@ class Permissions
         return $any === [] || collect($any)->contains(fn (string $permission) => $this->manager->can($permission));
     }
 
+    /** @param array<string, mixed> $definition */
     protected function matchesRoles(array $definition): bool
     {
         $roles = [
@@ -46,6 +48,7 @@ class Permissions
         return $role !== null && in_array((string) $role, array_map('strval', $roles), true);
     }
 
+    /** @return array<int, string> */
     protected function list(mixed $value): array
     {
         return collect((array) $value)

@@ -6,6 +6,7 @@ use EvolutionCMS\Models\SiteTmplvar;
 
 class FieldCatalog
 {
+    /** @return array<string, array<string, mixed>> */
     public function resourceFields(): array
     {
         return [
@@ -38,6 +39,7 @@ class FieldCatalog
         ];
     }
 
+    /** @return array<int, array<string, mixed>> */
     public function templateVariableFields(int $templateId): array
     {
         if ($templateId <= 0 || !class_exists(SiteTmplvar::class)) {
@@ -52,35 +54,36 @@ class FieldCatalog
             ->orderBy('site_tmplvars.rank')
             ->orderBy('site_tmplvars.id')
             ->get()
-            ->map(fn (SiteTmplvar $tv) => $this->templateVariableField($tv))
+            ->map(fn (object $tv) => $this->templateVariableField($tv))
             ->values()
             ->all();
     }
 
-    protected function templateVariableField(SiteTmplvar $tv): array
+    /** @return array<string, mixed> */
+    protected function templateVariableField(object $tv): array
     {
-        $type = $this->mapTvType((string) $tv->type);
+        $type = $this->mapTvType((string) data_get($tv, 'type'));
 
         return array_filter([
-            'name' => 'tvs.' . $tv->id,
+            'name' => 'tvs.' . data_get($tv, 'id'),
             'type' => $type,
-            'label' => $tv->caption ?: $tv->name,
-            'description' => $tv->description ?: null,
-            'default' => $this->defaultForType($type, $tv->default_text),
+            'label' => data_get($tv, 'caption') ?: data_get($tv, 'name'),
+            'description' => data_get($tv, 'description') ?: null,
+            'default' => $this->defaultForType($type, data_get($tv, 'default_text')),
             'options' => $this->optionsForTv($tv),
             'rows' => in_array($type, ['textarea'], true) ? 4 : null,
             'span' => in_array($type, ['textarea'], true) ? 'full' : null,
             'storage' => [
                 'type' => 'tv',
-                'id' => (int) $tv->id,
-                'name' => (string) $tv->name,
-                'tv_type' => (string) $tv->type,
+                'id' => (int) data_get($tv, 'id'),
+                'name' => (string) data_get($tv, 'name'),
+                'tv_type' => (string) data_get($tv, 'type'),
             ],
             'meta' => [
-                'category' => (int) $tv->category,
-                'display' => $tv->display,
-                'display_params' => $tv->display_params,
-                'editor_type' => (int) $tv->editor_type,
+                'category' => (int) data_get($tv, 'category'),
+                'display' => data_get($tv, 'display'),
+                'display_params' => data_get($tv, 'display_params'),
+                'editor_type' => (int) data_get($tv, 'editor_type'),
             ],
             'rules' => ['nullable'],
         ], fn ($value) => $value !== null && $value !== []);
@@ -108,13 +111,14 @@ class FieldCatalog
         return $default;
     }
 
-    protected function optionsForTv(SiteTmplvar $tv): array
+    /** @return array<int, array<string, string|null>> */
+    protected function optionsForTv(object $tv): array
     {
-        if (!in_array($this->mapTvType((string) $tv->type), ['select', 'multi-checkbox', 'radio'], true)) {
+        if (!in_array($this->mapTvType((string) data_get($tv, 'type')), ['select', 'multi-checkbox', 'radio'], true)) {
             return [];
         }
 
-        return collect(explode('||', (string) $tv->elements))
+        return collect(explode('||', (string) data_get($tv, 'elements')))
             ->map(fn ($option) => trim($option))
             ->filter()
             ->map(function (string $option) {
@@ -127,6 +131,7 @@ class FieldCatalog
             ->all();
     }
 
+    /** @return array<int, string> */
     protected function splitMultiValue(string $value): array
     {
         return collect(explode('||', $value))

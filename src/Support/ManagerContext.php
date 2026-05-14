@@ -78,7 +78,10 @@ class ManagerContext
     protected function managerThemeStyle(): string
     {
         $managerThemeModes = config('evo-ui.theme.manager_modes', ['', 'lightness', 'light', 'dark', 'darkness']);
-        $cookie = request()->cookie('EVO_themeMode');
+        $request = request();
+        $cookie = is_object($request) && method_exists($request, 'cookie')
+            ? $request->cookie('EVO_themeMode')
+            : null;
         $cookieMode = is_numeric($cookie) ? (int) $cookie : 0;
 
         if ($cookieMode > 0 && isset($managerThemeModes[$cookieMode])) {

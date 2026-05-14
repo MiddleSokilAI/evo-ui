@@ -30,7 +30,9 @@ class Form extends Component
     #[Url(as: 'locale', history: true, except: '')]
     public string $locale = '';
 
+    /** @var array<string, mixed> */
     public array $data = [];
+    /** @var array<string, mixed> */
     public array $cleanData = [];
     public bool $dirty = false;
     public bool $saved = false;
@@ -78,7 +80,8 @@ class Form extends Component
 
     public function render(): View
     {
-        return view('evo::livewire.form', [
+        /** @var View $view */
+        $view = view('evo::livewire.form', [
             'controller' => $this,
             'config' => $this->formConfig(),
             'tabs' => $this->tabs(),
@@ -87,8 +90,14 @@ class Form extends Component
             'saved' => $this->saved,
             'dirty' => $this->dirty,
         ]);
+
+        return $view;
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<int, array{value: mixed, label: mixed}>
+     */
     public function fieldOptions(array $field): array
     {
         if (!empty($field['options'])) {
@@ -132,6 +141,10 @@ class Form extends Component
             ->all();
     }
 
+    /**
+     * @param array<string, mixed> $source
+     * @return array<int, array{value: string, label: mixed}>
+     */
     protected function richTextEditorOptions(array $source): array
     {
         $registered = evo()->invokeEvent('OnRichTextEditorRegister');
@@ -157,6 +170,7 @@ class Form extends Component
             ->all();
     }
 
+    /** @param array<string, mixed> $field */
     public function fieldDisplay(array $field): string
     {
         $value = data_get($this->data, $field['name']);
@@ -203,7 +217,7 @@ class Form extends Component
             ->filter()
             ->all();
         $baseKey = (string) ($defaults[$keyField] ?? ($field['new_key'] ?? 'type'));
-        $key = $this->uniqueConfigMapKey($baseKey, $existingKeys);
+        $key = $this->uniqueConfigMapKey($baseKey, array_values($existingKeys));
 
         $defaults[$keyField] = $key;
         if (!isset($defaults[$labelField])) {
@@ -234,6 +248,10 @@ class Form extends Component
         $this->updatedData();
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $item
+     */
     public function configMapDeleteBlocked(array $field, array $item, int $index = 0): bool
     {
         $keyField = (string) ($field['key_field'] ?? '_key');
@@ -251,6 +269,10 @@ class Form extends Component
         return $this->configMapUsageCount($field, $item) > 0;
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $item
+     */
     public function configMapUsageCount(array $field, array $item): int
     {
         $guard = (array) ($field['delete_guard'] ?? []);
@@ -266,6 +288,7 @@ class Form extends Component
         return (int) DB::table($table)->where($column, $key)->count();
     }
 
+    /** @param array<string, mixed> $action */
     public function actionUrl(array $action): string
     {
         $url = (string) ($action['url'] ?? '#');
@@ -273,6 +296,7 @@ class Form extends Component
         return str_replace('{id}', (string) $this->recordId, $url);
     }
 
+    /** @param array<string, mixed> $config */
     public function formTitle(array $config): string
     {
         $field = $config['title_field'] ?? null;
@@ -285,9 +309,10 @@ class Form extends Component
             }
         }
 
-        return __($config['title'] ?? 'evo::global.form');
+        return (string) __($config['title'] ?? 'evo::global.form');
     }
 
+    /** @param array<string, mixed> $config */
     public function formMeta(array $config): string
     {
         $field = $config['meta_field'] ?? null;
@@ -308,11 +333,12 @@ class Form extends Component
         return (int) $model->getAttribute($this->resourceForms()->sourceKey($config));
     }
 
+    /** @param array<string, mixed> $field */
     public function customFieldView(array $field): ?string
     {
         $view = app(EvoUI::class)->formFieldView($field);
 
-        return $view && view()->exists($view) ? $view : null;
+        return $view && app('view')->exists($view) ? $view : null;
     }
 
     protected function fillData(): void
@@ -380,16 +406,25 @@ class Form extends Component
         return (string) $this->formConfig('source.type', 'model');
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function fields(): array
     {
-        return collect($this->formConfig('sections', []))
-            ->flatMap(fn ($section) => $section['fields'] ?? [])
-            ->filter(fn ($field) => $this->fieldIsEnabled($field))
-            ->filter(fn ($field) => $this->allowed($field))
-            ->values()
-            ->all();
+        $fields = [];
+
+        foreach ((array) $this->formConfig('sections', []) as $section) {
+            foreach ((array) data_get($section, 'fields', []) as $field) {
+                if (!is_array($field) || !$this->fieldIsEnabled($field) || !$this->allowed($field)) {
+                    continue;
+                }
+
+                $fields[] = $field;
+            }
+        }
+
+        return $fields;
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function sections(): array
     {
         return collect($this->formConfig('sections', []))
@@ -403,11 +438,12 @@ class Form extends Component
                 return $section;
             })
             ->filter(fn ($section) => $this->allowed($section))
-            ->filter(fn ($section) => ($section['fields'] ?? []) !== [])
+            ->filter(fn ($section) => $section['fields'] !== [])
             ->values()
             ->all();
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function tabs(): array
     {
         $sections = collect($this->sections())->pluck('tab')->filter()->unique()->all();
@@ -419,6 +455,7 @@ class Form extends Component
             ->all();
     }
 
+    /** @return array<int, array<string, mixed>> */
     protected function actions(): array
     {
         return collect($this->formConfig('actions', []))
@@ -427,6 +464,7 @@ class Form extends Component
             ->all();
     }
 
+    /** @param array<string, mixed> $definition */
     protected function allowed(array $definition): bool
     {
         return app(Permissions::class)->allows($definition);
@@ -446,6 +484,7 @@ class Form extends Component
         }
     }
 
+    /** @param array<string, mixed> $field */
     protected function fieldIsEnabled(array $field): bool
     {
         if ($this->isTvField($field)) {
@@ -460,6 +499,7 @@ class Form extends Component
         return $enabled === [] || in_array($field['name'] ?? '', $enabled, true);
     }
 
+    /** @return array<string, mixed> */
     protected function rules(): array
     {
         return collect($this->fields())
@@ -469,6 +509,7 @@ class Form extends Component
             ->all();
     }
 
+    /** @return array<string, string> */
     protected function validationAttributes(): array
     {
         return collect($this->fields())
@@ -476,6 +517,7 @@ class Form extends Component
             ->all();
     }
 
+    /** @param array<string, mixed> $field */
     protected function castValue(array $field, mixed $value): mixed
     {
         if (($field['invert'] ?? false) === true) {
@@ -496,6 +538,7 @@ class Form extends Component
         };
     }
 
+    /** @param array<string, mixed> $field */
     protected function castSelectValue(array $field, mixed $value): mixed
     {
         $rules = Arr::wrap($field['rules'] ?? []);
@@ -503,6 +546,10 @@ class Form extends Component
         return in_array('integer', $rules, true) ? (int) $value : (string) $value;
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<int, string>
+     */
     protected function castMultiValue(array $field, mixed $value): array
     {
         $allowed = collect($this->fieldOptions($field))
@@ -518,6 +565,7 @@ class Form extends Component
             ->all();
     }
 
+    /** @return array<int, string> */
     protected function castCsvValue(mixed $value): array
     {
         return collect(is_array($value) ? $value : explode(',', (string) $value))
@@ -539,6 +587,7 @@ class Form extends Component
         return $timestamp ? (int) $timestamp : 0;
     }
 
+    /** @param array<string, mixed> $field */
     protected function valueForDisplay(array $field, mixed $value): mixed
     {
         if (($field['invert'] ?? false) === true) {
@@ -571,6 +620,10 @@ class Form extends Component
         return $value;
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<int, array<string, mixed>>
+     */
     protected function configMapForDisplay(array $field, mixed $value): array
     {
         $keyField = (string) ($field['key_field'] ?? '_key');
@@ -586,6 +639,10 @@ class Form extends Component
             ->all();
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @return array<string, array<string, mixed>>
+     */
     protected function castConfigMapValue(array $field, mixed $value): array
     {
         $keyField = (string) ($field['key_field'] ?? '_key');
@@ -611,6 +668,11 @@ class Form extends Component
         return $items;
     }
 
+    /**
+     * @param array<string, mixed> $field
+     * @param array<string, mixed> $item
+     * @return array<string, mixed>
+     */
     protected function normalizeConfigMapItem(array $field, array $item): array
     {
         $fields = collect((array) ($field['fields'] ?? []))
@@ -638,6 +700,7 @@ class Form extends Component
         return preg_replace('/[^a-z0-9_]/', '', strtolower($key)) ?: '';
     }
 
+    /** @param list<string>|array<string, mixed> $existing */
     protected function uniqueConfigMapKey(string $key, array $existing): string
     {
         $base = $this->normalizeConfigMapKey($key) ?: 'type';
@@ -652,6 +715,7 @@ class Form extends Component
         return $candidate;
     }
 
+    /** @return array<string, mixed> */
     protected function fieldDefinition(string $fieldName): array
     {
         return collect($this->fields())
@@ -664,9 +728,12 @@ class Form extends Component
         $this->dirty = false;
     }
 
+    /** @param array<string, mixed> $data */
     protected function dataSnapshot(array $data): string
     {
-        return json_encode($this->normalizeSnapshotData($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $snapshot = json_encode($this->normalizeSnapshotData($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return is_string($snapshot) ? $snapshot : '';
     }
 
     protected function normalizeSnapshotData(mixed $value): mixed
@@ -680,11 +747,13 @@ class Form extends Component
         return $value;
     }
 
+    /** @param array<string, mixed> $field */
     protected function isTvField(array $field): bool
     {
         return data_get($field, 'storage.type') === 'tv';
     }
 
+    /** @return array<int, array{value: string, label: string}> */
     protected function csvOptions(string $key, string $fallback): array
     {
         $value = function_exists('evo') ? evo()->getConfig($key, $fallback) : $fallback;
@@ -787,6 +856,7 @@ class Form extends Component
         return $key ? data_get($config, $key, $default) : $config;
     }
 
+    /** @return array<string, mixed> */
     protected function resolvedFormConfig(): array
     {
         $config = $this->rawFormConfig();
