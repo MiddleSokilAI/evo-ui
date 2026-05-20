@@ -3152,7 +3152,7 @@ select.evo-ui-select--multiple {
 .evo-ui-modal-tabs .evo-ui-form-tab {
     min-height: 32px;
     padding: 0 10px;
-    font-size: 0.82rem;
+    font-size: 13px;
     letter-spacing: 0;
 }
 
@@ -3958,7 +3958,7 @@ select.evo-ui-select--multiple {
 .evo-ui-field__label,
 .evo-ui-field__hint,
 .evo-ui-field__error {
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .evo-ui-field__label {
@@ -5532,7 +5532,7 @@ select.evo-ui-select--multiple {
     width: 100%;
     min-width: 760px;
     border-collapse: collapse;
-    font-size: inherit;
+    font-size: 15px;
     background: var(--evo-ui-control-bg);
 }
 
@@ -5586,7 +5586,7 @@ select.evo-ui-select--multiple {
 
 .evo-ui-table th {
     color: var(--evo-ui-muted);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
 }
@@ -5743,7 +5743,7 @@ select.evo-ui-select--multiple {
 
 .evo-ui-table-cell--date {
     color: color-mix(in oklch, var(--evo-ui-text) 82%, var(--evo-ui-muted));
-    font-size: 0.78rem;
+    font-size: 12px;
     font-weight: 500;
     line-height: 1.25;
     white-space: nowrap;
@@ -5934,7 +5934,7 @@ select.evo-ui-select--multiple {
     border-radius: 999px;
     color: color-mix(in oklch, var(--evo-ui-meta-chip-color, var(--evo-ui-text)) 72%, var(--evo-ui-text));
     background: color-mix(in oklch, var(--evo-ui-meta-chip-color, var(--evo-ui-text)) 14%, var(--evo-ui-chip-bg));
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     font-weight: 500;
     line-height: 1;
     white-space: nowrap;
