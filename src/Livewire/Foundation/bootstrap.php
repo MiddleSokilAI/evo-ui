@@ -6,6 +6,8 @@ require_once __DIR__ . '/Auth/Access/Response.php';
 require_once __DIR__ . '/Http/Middleware/TrimStrings.php';
 require_once __DIR__ . '/Http/Middleware/ConvertEmptyStringsToNull.php';
 require_once __DIR__ . '/Http/Events/RequestHandled.php';
+require_once __DIR__ . '/Testing/Concerns/InteractsWithExceptionHandling.php';
+require_once __DIR__ . '/Testing/Concerns/MakesHttpRequests.php';
 
 if (!function_exists('devo_ui_alias_type')) {
     function devo_ui_alias_type(string $alias, string ...$targets): void
@@ -48,4 +50,12 @@ devo_ui_alias_type(
 devo_ui_alias_type(
     'Illuminate\\Foundation\\Http\\Events\\RequestHandled',
     EvoUI\Livewire\Foundation\Http\Events\RequestHandled::class
+);
+devo_ui_alias_type(
+    'Illuminate\\Foundation\\Testing\\Concerns\\InteractsWithExceptionHandling',
+    EvoUI\Livewire\Foundation\Testing\Concerns\InteractsWithExceptionHandling::class
+);
+devo_ui_alias_type(
+    'Illuminate\\Foundation\\Testing\\Concerns\\MakesHttpRequests',
+    EvoUI\Livewire\Foundation\Testing\Concerns\MakesHttpRequests::class
 );
