@@ -2275,6 +2275,11 @@
     max-width: 100%;
 }
 
+.evo-ui-table-surface > [data-evo-table-view-content] {
+    min-width: 0;
+    max-width: 100%;
+}
+
 .evo-ui-table-surface.is-loading .evo-ui-table-wrap {
     opacity: 0.72;
 }
@@ -5504,9 +5509,11 @@ select.evo-ui-select--multiple {
 .evo-ui-table-wrap {
     overflow-x: auto;
     max-width: 100%;
+    min-width: 0;
     border: 1px solid var(--evo-ui-border-soft);
     border-radius: var(--evo-ui-radius);
     background: var(--evo-ui-surface-soft);
+    -webkit-overflow-scrolling: touch;
 }
 
 .evo-ui-table-wrap--with-toolbar {
