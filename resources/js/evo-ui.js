@@ -1942,6 +1942,101 @@
         }, 60);
     }
 
+    function tableResponsiveStorageKey(surface) {
+        var key = surface.getAttribute('data-evo-table') || surface.getAttribute('wire:key') || 'default';
+
+        return 'evo-ui.table.responsive-view.' + key;
+    }
+
+    function tableSupportsView(surface, view) {
+        return !!surface.querySelector('[wire\\:click="switchView(\'' + view + '\')"]');
+    }
+
+    function switchResponsiveTableView(surface, view, auto) {
+        var component = livewireComponent(surface);
+        var storageKey = tableResponsiveStorageKey(surface);
+
+        if (!component || typeof component.call !== 'function') {
+            return;
+        }
+
+        if (surface.__evoResponsiveViewPending === view) {
+            return;
+        }
+
+        surface.__evoResponsiveViewPending = view;
+
+        if (auto) {
+            try {
+                window.sessionStorage.setItem(storageKey, view);
+            } catch (error) {
+                // Ignore storage restrictions; the responsive switch still works for this render.
+            }
+        } else {
+            try {
+                window.sessionStorage.removeItem(storageKey);
+            } catch (error) {
+                // Ignore storage restrictions.
+            }
+        }
+
+        Promise.resolve(component.call('switchView', view)).finally(function () {
+            surface.__evoResponsiveViewPending = '';
+        });
+    }
+
+    function syncResponsiveTableView(surface) {
+        var threshold = parseInt(surface.getAttribute('data-evo-responsive-list') || '1200', 10);
+        var current = surface.getAttribute('data-evo-table-view') || 'table';
+        var width = surface.getBoundingClientRect().width || window.innerWidth || 0;
+        var storageKey = tableResponsiveStorageKey(surface);
+        var autoView = '';
+
+        if (!tableSupportsView(surface, 'list') || !tableSupportsView(surface, 'table')) {
+            return;
+        }
+
+        try {
+            autoView = window.sessionStorage.getItem(storageKey) || '';
+        } catch (error) {
+            autoView = '';
+        }
+
+        if (width > 0 && width < threshold && current !== 'list') {
+            switchResponsiveTableView(surface, 'list', true);
+            return;
+        }
+
+        if (width >= threshold && current === 'list' && autoView === 'list') {
+            switchResponsiveTableView(surface, 'table', false);
+        }
+    }
+
+    function initResponsiveTableView(surface) {
+        if (!surface || surface.__evoResponsiveTableInitialized) {
+            syncResponsiveTableView(surface);
+            return;
+        }
+
+        surface.__evoResponsiveTableInitialized = true;
+
+        surface.querySelectorAll('[wire\\:click^="switchView("]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                try {
+                    window.sessionStorage.removeItem(tableResponsiveStorageKey(surface));
+                } catch (error) {
+                    // Ignore storage restrictions.
+                }
+            }, true);
+        });
+
+        syncResponsiveTableView(surface);
+    }
+
+    function syncResponsiveTables() {
+        document.querySelectorAll('[data-evo-table]').forEach(syncResponsiveTableView);
+    }
+
     function init(rootElement) {
         var target = rootElement || document;
 
@@ -1985,6 +2080,7 @@
         target.querySelectorAll('[data-evo-dnd]').forEach(initDnd);
         target.querySelectorAll('[data-evo-issue-workspace]').forEach(initIssueWorkspace);
         target.querySelectorAll('[data-evo-inline-create]').forEach(initInlineCreate);
+        target.querySelectorAll('[data-evo-table]').forEach(initResponsiveTableView);
     }
 
     function shouldHandleManagerLink(link, event) {
@@ -2908,6 +3004,7 @@
 
     window.addEventListener('resize', function () {
         document.querySelectorAll('[data-evo-inline-create]').forEach(toggleInlineCreateOverflow);
+        syncResponsiveTables();
     });
 
     window.addEventListener('message', function (event) {
