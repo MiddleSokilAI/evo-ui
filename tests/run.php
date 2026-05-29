@@ -143,6 +143,13 @@ evo_ui_group('package', function () use ($root): void {
         evo_ui_assert(isset($composer['autoload']['psr-4']['EvoUI\\']), 'EvoUI namespace must be registered.');
     });
 
+    evo_ui_test('Livewire foundation bootstrap provides testing concern shims', function () use ($root): void {
+        require_once $root . '/src/Livewire/Foundation/bootstrap.php';
+
+        evo_ui_assert(trait_exists('Illuminate\\Foundation\\Testing\\Concerns\\InteractsWithExceptionHandling', false), 'Livewire testing exception-handling concern shim must be aliased.');
+        evo_ui_assert(trait_exists('Illuminate\\Foundation\\Testing\\Concerns\\MakesHttpRequests', false), 'Livewire testing request concern shim must be aliased.');
+    });
+
     evo_ui_test('service provider does not register a manager module', function (): void {
         $provider = evo_ui_read('src/EvoUIServiceProvider.php');
 
