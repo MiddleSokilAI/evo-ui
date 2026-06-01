@@ -847,11 +847,15 @@ evo_ui_group('assets', function (): void {
         evo_ui_assert_contains('LivewireAssets::scripts()', $assets, 'Asset partial must include Livewire scripts through the manager-safe shim.');
     });
 
-    evo_ui_test('livewire assets use root routes instead of manager PATH_INFO', function (): void {
+    evo_ui_test('livewire assets use manager-scoped routes without PATH_INFO', function (): void {
         $assets = evo_ui_read('src/Support/LivewireAssets.php');
+        $provider = evo_ui_read('src/EvoUIServiceProvider.php');
 
-        evo_ui_assert_contains("sitePath('livewire/livewire.js')", $assets, 'Livewire script URL must use the site front controller routes.');
-        evo_ui_assert_contains("sitePath('livewire/update')", $assets, 'Livewire update URI must use the site front controller routes.');
+        evo_ui_assert_contains("managerEndpointPath('evo-ui/livewire/livewire.js')", $assets, 'Livewire script URL must use the manager-scoped EvoUI route.');
+        evo_ui_assert_contains("managerEndpointPath('evo-ui/livewire/update.json')", $assets, 'Livewire update URI must use the manager-scoped EvoUI route.');
+        evo_ui_assert_contains("Route::post('evo-ui/livewire/update.json'", $provider, 'Livewire update route must be registered under the EvoUI manager namespace.');
+        evo_ui_assert_contains("Route::get('evo-ui/livewire/livewire.js'", $provider, 'Livewire script route must be registered under the EvoUI manager namespace.');
+        evo_ui_assert_contains("->middleware('mgr')", $provider, 'Livewire runtime routes must keep manager middleware.');
         evo_ui_assert_not_contains("'/index.php/'", $assets, 'Livewire manager assets must not rely on PATH_INFO after manager/index.php.');
     });
 

@@ -28,15 +28,15 @@ class LivewireAssets
         $progressBar = config('livewire.navigate.show_progress_bar', true) ? '' : 'data-no-progress-bar';
         $attributes = self::attributes($assets->scriptTagAttributes ?? []);
         $version = self::manifestVersion();
-        $scriptUrl = rtrim(self::sitePath('livewire/livewire.js'), '/') . '?id=' . rawurlencode($version);
+        $scriptUrl = rtrim(self::managerEndpointPath('evo-ui/livewire/livewire.js'), '/') . '?id=' . rawurlencode($version);
 
         return sprintf(
             '<script src="%s" %s data-csrf="%s" data-module-url="%s" data-update-uri="%s" %s></script>',
             e($scriptUrl),
             $progressBar,
             e($token),
-            e(self::sitePath(ltrim(EndpointResolver::prefix(), '/'))),
-            e(self::sitePath('livewire/update')),
+            e(self::managerEndpointPath(ltrim(EndpointResolver::prefix(), '/'))),
+            e(self::managerEndpointPath('evo-ui/livewire/update.json')),
             $attributes
         );
     }
@@ -57,7 +57,7 @@ class LivewireAssets
         return is_array($manifest) ? ($manifest['/livewire.js'] ?? 'dev') : 'dev';
     }
 
-    protected static function sitePath(string $path = ''): string
+    protected static function managerEndpointPath(string $path = ''): string
     {
         $base = parse_url(EVO_SITE_URL, PHP_URL_PATH) ?: '/';
 

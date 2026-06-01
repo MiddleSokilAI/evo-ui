@@ -159,16 +159,17 @@ class EvoUIServiceProvider extends ServiceProvider
         $livewire = app('livewire');
 
         $livewire->setPersistentMiddleware(config('app.middleware.mgr', []));
-        $livewire->setUpdateRoute(fn ($handle) => Route::post('livewire/update', $handle)
+        $livewire->setUpdateRoute(fn ($handle) => Route::post('evo-ui/livewire/update.json', $handle)
             ->middleware('mgr')
             ->name('manager.livewire.update'));
-        $livewire->setScriptRoute(fn ($handle) => Route::get('livewire/livewire.js', $handle)
-            ->middleware('mgr'));
+        $livewire->setScriptRoute(fn ($handle) => Route::get('evo-ui/livewire/livewire.js', $handle)
+            ->middleware('mgr')
+            ->name('manager.livewire.script'));
 
-        Route::get('livewire/livewire.min.js.map', [FrontendAssets::class, 'maps'])
+        Route::get('evo-ui/livewire/livewire.min.js.map', [FrontendAssets::class, 'maps'])
             ->middleware('mgr');
 
-        Route::get('livewire/livewire.csp.min.js.map', [FrontendAssets::class, 'cspMaps'])
+        Route::get('evo-ui/livewire/livewire.csp.min.js.map', [FrontendAssets::class, 'cspMaps'])
             ->middleware('mgr');
     }
 
