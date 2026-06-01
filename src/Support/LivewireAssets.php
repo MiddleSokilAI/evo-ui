@@ -3,7 +3,6 @@
 namespace EvoUI\Support;
 
 use Livewire\Mechanisms\FrontendAssets\FrontendAssets;
-use Livewire\Mechanisms\HandleRequests\EndpointResolver;
 
 class LivewireAssets
 {
@@ -28,15 +27,15 @@ class LivewireAssets
         $progressBar = config('livewire.navigate.show_progress_bar', true) ? '' : 'data-no-progress-bar';
         $attributes = self::attributes($assets->scriptTagAttributes ?? []);
         $version = self::manifestVersion();
-        $scriptUrl = rtrim(self::managerRouteUrl('livewire/livewire.js'), '/') . '?id=' . rawurlencode($version);
+        $scriptUrl = self::managerEndpointUrl('script', ['id' => $version]);
 
         return sprintf(
             '<script src="%s" %s data-csrf="%s" data-module-url="%s" data-update-uri="%s" %s></script>',
             e($scriptUrl),
             $progressBar,
             e($token),
-            e(self::sitePath(ltrim(EndpointResolver::prefix(), '/'))),
-            e(self::managerRoutePath('livewire/update')),
+            e(self::managerEndpointBaseUrl()),
+            e(self::managerEndpointUrl('update')),
             $attributes
         );
     }
@@ -57,35 +56,19 @@ class LivewireAssets
         return is_array($manifest) ? ($manifest['/livewire.js'] ?? 'dev') : 'dev';
     }
 
-    protected static function managerUrl(string $path = ''): string
+    /**
+     * @param array<string, string> $query
+     */
+    protected static function managerEndpointUrl(string $action, array $query = []): string
     {
-        return rtrim(EVO_MANAGER_URL, '/') . '/' . ltrim($path, '/');
+        $query = array_merge(['action' => $action], $query);
+
+        return self::managerEndpointBaseUrl() . '?' . http_build_query($query);
     }
 
-    protected static function managerRouteUrl(string $path = ''): string
+    protected static function managerEndpointBaseUrl(): string
     {
-        return rtrim(EVO_MANAGER_URL, '/') . '/index.php/' . ltrim($path, '/');
-    }
-
-    protected static function managerPath(string $path = ''): string
-    {
-        $base = parse_url(self::managerUrl(), PHP_URL_PATH) ?: '/manager/';
-
-        return '/' . trim(trim($base, '/') . '/' . trim($path, '/'), '/');
-    }
-
-    protected static function managerRoutePath(string $path = ''): string
-    {
-        $base = parse_url(self::managerRouteUrl(), PHP_URL_PATH) ?: '/manager/index.php/';
-
-        return '/' . trim(trim($base, '/') . '/' . trim($path, '/'), '/');
-    }
-
-    protected static function sitePath(string $path = ''): string
-    {
-        $base = parse_url(EVO_SITE_URL, PHP_URL_PATH) ?: '/';
-
-        return '/' . trim(trim($base, '/') . '/' . trim($path, '/'), '/');
+        return rtrim(EVO_MANAGER_URL, '/') . '/evo-ui';
     }
 
     /**
