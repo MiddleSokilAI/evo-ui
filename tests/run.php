@@ -860,7 +860,9 @@ evo_ui_group('assets', function (): void {
         evo_ui_assert_contains('HandleRequests::class', $endpoint, 'Manager endpoint must proxy Livewire update requests.');
         evo_ui_assert_contains('FrontendAssets::class', $endpoint, 'Manager endpoint must proxy Livewire script requests.');
         evo_ui_assert_contains('LivewireManagerEndpoint::class', $provider, 'EvoUI provider must register the manager endpoint handler.');
-        evo_ui_assert_contains("Route::match(['GET', 'POST'], 'evo-ui/{path?}'", $provider, 'EvoUI provider must expose the manager endpoint route.');
+        evo_ui_assert_contains("Route::match(['GET', 'POST'], \$route", $provider, 'EvoUI provider must expose the manager endpoint routes.');
+        evo_ui_assert_contains('$this->managerEndpointRoutes() as $route', $provider, 'EvoUI provider must register all manager endpoint route aliases.');
+        evo_ui_assert_contains("\$routes[] = \$managerDir . '/evo-ui/{path?}';", $provider, 'EvoUI provider must expose the endpoint under the real manager directory URL.');
         evo_ui_assert_contains("->where('path', '.*')", $provider, 'EvoUI manager endpoint route must support Livewire module asset paths.');
         evo_ui_assert_not_contains("'/index.php/'", $assets, 'Livewire manager assets must not rely on PATH_INFO after manager/index.php.');
         evo_ui_assert_not_contains('evo-ui-livewire.php', $assets, 'Livewire assets must not depend on a physical manager PHP file.');
