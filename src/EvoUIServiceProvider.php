@@ -169,9 +169,26 @@ class EvoUIServiceProvider extends ServiceProvider
             return;
         }
 
-        Route::match(['GET', 'POST'], 'evo-ui/{path?}', function (?string $path = null) {
-            return app(LivewireManagerEndpoint::class)(request(), $path);
-        })->where('path', '.*');
+        foreach ($this->managerEndpointRoutes() as $route) {
+            Route::match(['GET', 'POST'], $route, function (?string $path = null) {
+                return app(LivewireManagerEndpoint::class)(request(), $path);
+            })->where('path', '.*');
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function managerEndpointRoutes(): array
+    {
+        $routes = ['evo-ui/{path?}'];
+        $managerDir = defined('MGR_DIR') ? trim((string) MGR_DIR, '/') : '';
+
+        if ($managerDir !== '') {
+            $routes[] = $managerDir . '/evo-ui/{path?}';
+        }
+
+        return array_values(array_unique($routes));
     }
 
     protected function registerLivewireBridge(): void
