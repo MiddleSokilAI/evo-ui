@@ -119,7 +119,7 @@
     }"
     x-on:evo-ui:form.saved.window="afterSaved()"
 >
-    <nav class="evo-ui-nav-tabs evo-ui-tab-labels tabs-lift" aria-label="{{ $label }}">
+    <nav class="evo-ui-nav-tabs evo-ui-tab-labels tabs-lift {{ isset($navigationAside) ? 'evo-ui-nav-tabs--with-aside' : '' }}" aria-label="{{ $label }}">
         <div class="evo-ui-nav-tabs__list" role="tablist">
             @foreach($tabs as $tab)
                 @php
@@ -157,6 +157,11 @@
                 </button>
             @endforeach
         </div>
+        @isset($navigationAside)
+            <div class="evo-ui-nav-tabs__aside">
+                {{ $navigationAside }}
+            </div>
+        @endisset
     </nav>
 
     <div class="tab-content {{ $panelClass }}">
